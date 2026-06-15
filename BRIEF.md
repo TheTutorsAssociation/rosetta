@@ -28,10 +28,16 @@ TEC-03 / WEB-01 / PRT-10) describe *Nucleus's* model, **not ours**. We mine the 
   copy — all models redone.
 - **Build order:** **Members & onboarding first** (Section A). Everything else tracked as an issue, built
   after. September target ("base version") = Members → Payments → Events → Reports (+ Mailchimp sync).
-- **Email:** **Mailchimp now** — sync members + segments via API and send all email there; in-platform
-  email (ADM-01/02) is a later phase.
-- **Public Find-a-Tutor directory / member hub:** **deferred** (admin backend only for now), even though
-  the RFP marks the directory Must / "key value driver" (WEB-03/04). Board sign-off requested.
+- **Email:** **Mailchimp now**, as a **proper API integration** — `Member` create/update and `Tag` changes
+  are pushed to Mailchimp in real time (audience + merge fields + segments stay in sync); compose/send stays
+  in Mailchimp. In-platform email editor (ADM-01/02) is a later phase.
+- **Member login area / hub:** **in the first version.** Members authenticate (`User` with `MEMBER` role
+  linked to their `Member`) and get a logged-in hub. Built **code-first with structured content** — a
+  `Resource` model (documents/links/logos/notices, tier-gated), the discounts list, a live events feed, and
+  member self-service profile — **not** a freeform-page CMS (keeps the no-CMS decision; flagged for board
+  confirmation if fuller page-editing is wanted).
+- **Public marketing website + Find-a-Tutor directory:** **deferred** (RFP marks the directory Must / "key
+  value driver", WEB-03/04). Board sign-off requested.
 - **Compliance:** **tracking + dashboard now** (COM-01/03/04); tutor-check.co.uk API + auto-email /
   auto-suspend (COM-02) deferred to a fast-follow.
 - **Configurability:** **code-first** — fields/levels/permissions in code; segments live in Mailchimp;
@@ -97,6 +103,10 @@ title / logfire service → `rosetta`; wire `AuthProvider` + `/auth/login` + `/u
    (email-verify), **`share_publicly`**. Replaces the Google Form.
 9. **`AuditEntry`** — append-only log of membership/compliance status & level changes (who/what/when),
    surfaced as the member notes timeline. [COM-05]
+10. **Member auth** — members log in as a `User` with role `MEMBER` linked 1:1 to their `Member`
+    (staff are `ADMIN`/`SUPERADMIN`). Drives the member hub; `Permission` gates member vs staff routes.
+11. **`Resource`** — structured member-hub content (documents, links, logos, notices), optionally
+    tier-gated; managed in the admin (not freeform pages). Powers the hub's resource library + logos.
 
 **Later-section entities:** `Invoice` (+ line items; origins: member application/renewal/level-change/store
 order/event ticket; VAT + `account` TTA/TFA flags; Stripe ids; export-only, no QuickBooks) · `DiscountCode`
@@ -114,11 +124,12 @@ custom fields, back-end-only access link revealed post-registration, attendance)
 | Payments, Stripe, store/products, member-vs-non-member pricing, invoices, VAT/TFA, discounts | COMM-01..04, 2.10/2.11 | **B — issue** |
 | Events admin: tier-gated tickets, pricing, access links, reminders, attendance, waitlist | EVT-01..09, 2.1 | **C — issue** |
 | Reporting: new members by tier, financials, churn/retention, MRR | 2.8, TEC-07 | **D — issue** |
-| Email via Mailchimp (sync + segments); in-platform editor later | ADM-01/02, 2.9 | **E — issue** |
+| Mailchimp integration (real-time push on member/tag change; segments) | ADM-01/02, 2.9 | **E — core integration** |
+| Member login area + hub (auth, dashboard, resources/logos/helpline/discounts, events feed, self-service profile) | PRT-01..09, MEM-09, 3.1/3.3–3.8 | **F — in scope** |
 | Compliance automation (tutor-check.co.uk, auto-email, grace→auto-suspend, 14-day archive) | COM-02, COM-03 (automation) | **Deferred** |
-| Member portal/hub (Home/DBS/CPD/Events/Discounts, resources, logos, helpline, self-service) | PRT-01..10, MEM-08/09 | **Deferred (CMS-ish)** |
-| Public website + tutor/agency/partner directories, map, public discount list | WEB-01..09, 3.2 | **Deferred** |
-| Voting / elections | 2.12, PRT-02 | **Deferred (with hub)** |
+| In-app email editor (retire Mailchimp); tier-split member experiences | ADM-01/02, MEM-08 | **Deferred** |
+| Online voting/elections; company self-service of bundle members | 2.12, PRT-02 | **Deferred (fast-follow in hub)** |
+| Public marketing website + tutor/agency/partner directories, map, public discount list | WEB-01..09, 3.2 | **Deferred** |
 | Jobs board + multi-currency | 3.9 | **Deferred** |
 | Store extras: IPP, VAT/Compliance pack fulfilment, conference paywall | COMM-02 | **Deferred** |
 | Data migration from Wild Apricot (members, history, events, docs) | TEC-06 | **Migration epic** |
@@ -152,19 +163,29 @@ custom fields, back-end-only access link revealed post-registration, attendance)
   (EVT-08), attendance (EVT-09). Follow-up session with Sam.
 - **D · Reports:** new members by tier, financials, **churn & retention incl. lapsed-then-renewed**, MRR,
   paying-vs-named; charts + tables + date ranges. [2.8, TEC-07]
-- **E · Mailchimp:** sync Members + segments/tags via API; trigger system + marketing email in Mailchimp;
-  map the WA email set (application initiation, member activation, renewal reminders 1/2, renewal day,
-  grace, lapsed, renewal pending/confirmed, recurring-renewal-failed, card-expiry) to Mailchimp journeys.
+- **E · Mailchimp (core integration):** real-time push to Mailchimp on `Member` create/update and `Tag`
+  change (upsert audience member, merge fields, segment/tag membership) via the API — no manual exports;
+  idempotent + retried via Celery. Compose/send stays in Mailchimp. Maps the WA email set (application
+  initiation, member activation, renewal reminders 1/2, renewal day, grace, lapsed, renewal
+  pending/confirmed, recurring-renewal-failed, card-expiry) to Mailchimp journeys. Wired into the Members
+  module rather than bolted on later.
+- **F · Member login area & hub (in scope):** member auth (`User` role `MEMBER` ↔ `Member`); member
+  dashboard (status, compliance/DBS to-dos, upcoming events, quick links); **self-service profile**
+  (configurable fields + admin approval, MEM-09); resource library + logos + legal helpline + partner
+  discounts list (from the `Resource` model); events browse/register; DBS/CPD info pages — all pulling live
+  from rosetta. **Structured-content admin, not a freeform CMS.** Online voting and company bundle
+  self-service are fast-follows within the hub.
 - **Migration:** members, membership history, event history (where feasible), documents + cleansing. WA
   renews **March** — migrate ahead. [TEC-06]
 
 ## 8. Where this diverges from the Nucleus RFP (deliberate)
 - **Single-tenant bespoke**, not Nucleus's multi-tenant "configured-not-customised" shared codebase
   (TEC-03). **Code-first**, not no-code config (ADM-04, MEM-09, TEC-04/05). **Our stack** (FastAPI + RR7),
-  not Statamic CMS for the public site (WEB-01). **Phased admin-first**, not "all Must at launch" — we
-  deliberately defer the member hub, public directories, voting, jobs board and DBS automation that the RFP
-  lists as Must. **Mailchimp retained** near-term, vs the RFP's intent to retire it (ADM-02). If the board
-  wants the full member-hub + directory on day one, that materially changes scope (flag now).
+  not Statamic CMS for the public site (WEB-01). **Phased**, not "all Must at launch" — the first version
+  includes the member hub (structured-content, not a freeform CMS) but **defers the public marketing website
+  + directories, voting, jobs board and DBS automation** that the RFP lists as Must. **Mailchimp retained**
+  near-term, vs the RFP's intent to retire it (ADM-02). If the board wants the full **public** directory on
+  day one, or fuller in-hub page-editing, that materially changes scope (flag now).
 
 ## 9. GitHub issues
 Labels: `epic`, `backend`, `frontend`, `infra`, `deferred`, `question`. Milestones: `M0 Scaffold`,
@@ -179,13 +200,14 @@ Labels: `epic`, `backend`, `frontend`, `infra`, `deferred`, `question`. Mileston
   share_publicly; (8) AuditEntry + member notes timeline; (9) Compliance tracking + RAG + dashboard/saved
   view; (10) Public signup flow + Approve/Reject queue; (11) Bulk admin ops; (12) Members admin UI + detail
   tabs + Companies/Products/Memberships admin.
-- **Epic issues (after A):** Payments/Stripe · Events (admin) · Reports · Mailchimp integration · Wild
-  Apricot data migration.
-- **Deferred epics (`deferred`):** Member hub/portal · Public website + tutor/agency/partner directories +
-  map · Voting/elections · Jobs board (multi-currency) · DBS automation (tutor-check.co.uk + auto-email +
-  grace→auto-suspend + 14-day archive) · In-platform email (retire Mailchimp) · Discount-code engine +
-  partner discounts · Store extras (IPP / VAT & Compliance packs / conference paywall) · Member self-service
-  profile editing · Tier-split member experiences.
+- **In-scope epics:** Payments/Stripe · Events (admin) · Reports · **Mailchimp integration (core — real-time
+  push on member/tag change; wired into Members)** · **Member login area & hub (auth + dashboard + resources
+  + self-service profile)** · Wild Apricot data migration.
+- **Deferred epics (`deferred`):** Public marketing website + tutor/agency/partner directories + map ·
+  Online voting/elections · Company self-service of bundle members · Jobs board (multi-currency) · DBS
+  automation (tutor-check.co.uk + auto-email + grace→auto-suspend + 14-day archive) · In-app email editor
+  (retire Mailchimp) · Discount-code engine + partner discounts · Store extras (IPP / VAT & Compliance packs
+  / conference paywall) · Tier-split member experiences.
 - **Open-question issues (`question`):** Contacts modelling (Person discriminator vs separate); events depth
   with Sam; finance/VAT with Stephen (TTA/TFA split, £90k threshold, abroad sponsorship); DBS automation with
   John (tutor-check.co.uk + his repo); board sign-off on deferring member-hub/directory.

@@ -1,56 +1,62 @@
-# tc-fullstack-starter
+# rosetta
 
-TutorCruncher's full-stack starter template — a **FastAPI + SQLModel + Celery** backend and a
-**React Router v7** frontend, distilled and curated from our production apps and conventions.
+The **The Tutors' Association (TTA)** membership platform — a bespoke replacement for Wild Apricot.
 
-Hand this repo to a coding agent and say *"build me a project that does X"*: it works within the
-relevant folder, follows that stack's `CLAUDE.md`, and wires the two together per `INTEGRATION.md`.
+A **FastAPI + SQLModel + Celery** backend (`backend/`) and a **React Router v7** frontend (`frontend/`),
+built on TutorCruncher's [`tc-fullstack-starter`](https://github.com/tutorcruncher/tc-fullstack-starter)
+conventions. Single-tenant (TTA only). The first version covers the **staff admin** side (members,
+payments, events, reporting) **and the member login area / hub**; the public marketing website and the
+public "Find a Tutor" directory come later.
 
-```
-tc-fullstack-starter/
-├── README.md            # you are here
-├── INTEGRATION.md       # how the two halves talk (auth, CORS, API contract, SSR) — read this for full-stack work
-├── CLAUDE.md            # agent entry point → points at each stack's guide
-├── .github/workflows/   # path-scoped CI: backend.yml, frontend.yml, frontend-e2e.yml
-├── backend/             # FastAPI · SQLModel · Celery · Postgres · Redis   (Python, uv)
-└── frontend/            # React Router v7 · React 19 · Tailwind v4 · Vite   (TypeScript, npm)
-```
+> **Status:** scaffolding. The build is tracked in [issues](../../issues) — start at the
+> [M1 Members & onboarding epic](../../issues/4).
 
-## The two halves
+## 📄 Documents — what to read and why
+
+### Project briefs (start here)
+| Document | What it is | Who it's for |
+|---|---|---|
+| **[OVERVIEW.md](OVERVIEW.md)** | Plain-English feature brief — every feature and **what it will / won't do (yet)**, what's deferred and why. | TTA staff (Julius, Myra, Sam) & the board — **read this to approve scope.** |
+| **[BRIEF.md](BRIEF.md)** | Technical build brief — architecture, data model, scope with requirement-ID traceability, and where we diverge from the Nucleus RFP. | Developers. |
+
+### How the codebase is built (conventions — follow exactly)
+| Document | Covers |
+|---|---|
+| **[CLAUDE.md](CLAUDE.md)** | Root agent guide — routes you to the right stack folder. |
+| **[INTEGRATION.md](INTEGRATION.md)** | How backend ↔ frontend talk: auth/JWT, CORS, the API request/response contract, SSR. Read before any full-stack change. |
+| **[backend/CLAUDE.md](backend/CLAUDE.md)** | Backend conventions entry point (FastAPI · SQLModel · Celery). |
+| **[backend/README.md](backend/README.md)** | Backend setup, commands, and the "add a domain slice" workflow. |
+| **[backend/STYLE_GUIDE.md](backend/STYLE_GUIDE.md)** | Backend code style. |
+| **[backend/PR_REVIEW_PATTERNS.md](backend/PR_REVIEW_PATTERNS.md)** | Pre-PR self-review checklist (mined from real review comments). |
+| **[backend/.claude/rules/](backend/.claude/rules/)** | Detailed rules: api, code-style, database, tasks, testing, tooling. |
+| **[frontend/CLAUDE.md](frontend/CLAUDE.md)** | Frontend conventions entry point (React Router v7 · React 19 · Tailwind v4). |
+| **[frontend/README.md](frontend/README.md)** | Frontend setup, commands, and the "add a resource" workflow. |
+| **[frontend/STYLE_GUIDE.md](frontend/STYLE_GUIDE.md)** | Frontend code style. |
+| **[frontend/TESTING_GUIDE.md](frontend/TESTING_GUIDE.md)** | Frontend testing discipline (Jest + Playwright). |
+| **[frontend/docs/ARCHITECTURE.md](frontend/docs/ARCHITECTURE.md)** | Data flow, SSR boot, loaders/actions. |
+| **[frontend/docs/CUSTOMIZATION.md](frontend/docs/CUSTOMIZATION.md)** | How to wire auth, env vars, providers, theming. |
+| **[frontend/NOT_CARRIED_FORWARD.md](frontend/NOT_CARRIED_FORWARD.md)** | What the starter template intentionally left out. |
+
+> The backend and frontend are **independent** — work in one folder at a time and follow *that folder's*
+> `CLAUDE.md`. The root files above only route you and cover the contract between the two.
+
+## Stack & layout
 
 | | Backend (`backend/`) | Frontend (`frontend/`) |
 |---|---|---|
-| Stack | FastAPI · SQLModel · Celery | React Router v7 (SSR) · React 19 · Tailwind v4 |
-| Lang / tooling | Python 3.12 · uv · ruff · ty · pytest | TypeScript · npm · ESLint · Prettier · Jest · Playwright |
-| Dev server | `:8000` (uvicorn) | `:5173` (vite dev) |
-| Auth | JWT (internal) + per-org API keys (public `/api/v1`) | bearer token via the typed `api.ts` client |
-| Tests | `pytest` — 100% coverage gate | `jest` — 80/75/70/75 gate + Playwright e2e |
-| Guide | [`backend/CLAUDE.md`](backend/CLAUDE.md) | [`frontend/CLAUDE.md`](frontend/CLAUDE.md) |
+| Stack | FastAPI · SQLModel · Celery · Postgres · Redis | React Router v7 (SSR) · React 19 · Tailwind v4 · Vite |
+| Tooling | Python 3.12 · `uv` · `ruff` · `ty` · `pytest` | TypeScript · `npm` · ESLint · Prettier · Jest · Playwright |
+| Dev server | `:8000` | `:5173` |
+| Tests | `pytest` — 100% patch coverage | Jest — 80/75/70/75 + Playwright e2e |
 
 ## Quick start
-
-Each folder is **self-contained** — work in it directly. Run both for a full-stack loop:
 
 ```bash
 # Backend (needs local Postgres + Redis) — http://localhost:8000
 cd backend && make install-dev && uv run alembic upgrade head && make run-dev
 
-# Frontend — http://localhost:5173 (talks to the backend on :8000 by default)
+# Frontend — http://localhost:5173 (talks to the backend on :8000)
 cd frontend && npm ci && cp .env.example .env && npm run dev
 ```
 
-See each folder's `README.md` for the full per-stack quick start, and **`INTEGRATION.md`** before
-doing anything that spans both (login, calling the API, CORS, the request/response contract).
-
-## How a project gets built here
-
-1. Decide which half (or both) your project needs.
-2. Point the agent at the folder(s); it follows the stack's `CLAUDE.md`, `STYLE_GUIDE.md`, and rules.
-3. For full-stack work, the agent follows `INTEGRATION.md` to keep auth, CORS, and the API contract aligned.
-4. CI is **path-scoped**: backend changes run `backend.yml`, frontend changes run `frontend.yml`.
-
-## Using one half standalone
-
-The folders don't depend on each other. To extract one into its own repo, copy the folder out and
-re-add its workflow from `.github/workflows/` (drop it back into the new repo's `.github/workflows/`,
-removing the `paths:`/`working-directory:` monorepo scoping).
+See each folder's `README.md` for the full per-stack quick start.

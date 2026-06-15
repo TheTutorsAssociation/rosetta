@@ -14,9 +14,11 @@ will be the place where staff manage members, take payments, run events and see 
 things that make Wild Apricot painful (clunky screens, broken styling, hours of manual admin, and a
 system that can't grow with us).
 
-We're building it in stages. **The first version — targeted for September — focuses on the staff side:
-managing members, taking payments, running events, and reporting.** The member-facing website and login
-area come later (explained at the end). We're starting with what saves you the most time first.
+We're building it in stages. **The first version — targeted for September — covers the staff side
+(managing members, taking payments, running events, reporting) *and* the member login area / member
+hub** where members sign in to see their status, resources and events. The **public marketing website**
+and the **public "Find a Tutor" directory** come later (explained at the end). We're starting with what
+saves you the most time first.
 
 **How to read this:** each feature says ✅ **what it will do** and 🚫 **what it won't do (for now)**. "For
 now" means it's planned for a later stage, not that it's gone forever.
@@ -40,8 +42,9 @@ The core of the system: one clean, complete record per member.
   there's always an audit trail.
 
 🚫 Won't do (for now):
-- Members can't log in and edit their own profile yet — that's part of the member area, which comes later.
-  For now, staff edit profiles (as today).
+- Members won't appear in a public, searchable "Find a Tutor" directory yet — that's part of the public
+  website, which comes later. (Members *can* log in and manage their own profile — see "Member login area
+  & hub" below.)
 
 ### 2. Membership types & corporate / bundle members
 A clean, simple set of membership types instead of Wild Apricot's ~40 overlapping, half-deleted ones.
@@ -149,11 +152,32 @@ paywall and similar specialist products come later.
 — monthly recurring revenue, and the paying-vs-named member counts. 🚫 Won't do (for now): fully custom,
 build-your-own report designer — we'll build the reports you actually use.
 
-### 11. Emails
-✅ Will do: keep using **Mailchimp** for member emails (you already have everyone there), with rosetta
-keeping Mailchimp up to date automatically with the right members and segments. 🚫 Won't do (for now):
-we're **not** moving email composition into rosetta yet (no in-app email editor) — that's a possible later
-step. Day-to-day, you'll still write and send in Mailchimp, which you know and which looks good.
+### 11. Emails & Mailchimp
+✅ Will do: keep using **Mailchimp** for writing and sending member emails (you already have everyone
+there). rosetta will have a **proper, automatic Mailchimp connection**: the moment you add a member, change
+their details, or tag them in rosetta, that change is sent straight to Mailchimp through its API — so your
+audience and segments are always in sync, with no manual exports. 🚫 Won't do (for now): we're **not**
+moving email *writing/sending* into rosetta yet (no in-app email editor) — you'll still compose and send in
+Mailchimp, which you know and which looks good. Bringing email fully in-house is a possible later step.
+
+### 12. Member login area & hub
+The members' own logged-in area — the part members actually see when they sign in.
+
+✅ Will do:
+- Let members **log in** and see their **dashboard**: their membership status, compliance/DBS status and
+  what they need to do, upcoming events, and quick links.
+- Let members **view and update their own profile** (with admin approval where it matters).
+- Surface the **resource library** (TTA Code of Practice, safeguarding/GDPR templates, marketing guide,
+  etc.), membership **logos**, the **legal helpline** details, and the **partner discounts** list.
+- Show **events** (browse + register) and **DBS / CPD** info pages, pulling live from the rest of rosetta.
+
+🚫 Won't do (for now):
+- It won't be a free-form, edit-any-page website builder (a full CMS). Staff manage the hub's content in a
+  **structured way** — adding documents, links, logos and notices through the admin — rather than
+  designing pages. *(This keeps to the "we're not building a CMS" decision while still giving members a
+  proper, on-brand area. Tell us if you want fuller page-editing — that's a bigger build.)*
+- Online **voting / board elections** and **company self-service** (a corporate managing its own bundle
+  members) will follow shortly after, not necessarily on day one.
 
 ---
 
@@ -161,10 +185,6 @@ step. Day-to-day, you'll still write and send in Mailchimp, which you know and w
 
 These are real features we expect to build — just not first. Flagging them so there are no surprises.
 
-- **Member login area / member hub** — the logged-in portal (Home, DBS, CPD, Events, Discounts,
-  downloadable resources, logos, legal helpline, voting). *Why later:* it needs an easy way for staff to
-  edit its content (a content management system), which is a separate build; we're doing the staff side
-  first.
 - **Public "Find a Tutor" website & directory** — the searchable public listing of tutors (and the separate
   agency and partner directories, and the map view). *Why later:* it's a key value driver and we will build
   it, but it sits on top of clean member data — which the first version creates — and belongs with the
@@ -190,7 +210,9 @@ These are real features we expect to build — just not first. Flagging them so 
 - **Wild Apricot renews in March** — we'll plan the data move ahead of that.
 - **What we need to start:** your approval of this brief, plus three short follow-ups — a session with
   **Sam** on events detail, a short call with **Stephen** on the VAT / TTA-vs-TFA money split, and the
-  **board's nod** on deferring the public directory and member login area to a later stage (Part 2).
+  **board's nod** on deferring the public marketing website + "Find a Tutor" directory to a later stage
+  (Part 2). *Note: adding the member login area & hub to the first version (good call) makes September
+  tighter — we'll keep you posted on sequencing.*
 
 *If anything here is wrong, missing, or in the wrong order, tell us now — it's much cheaper to change on
 this page than later.*

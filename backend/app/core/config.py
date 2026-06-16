@@ -37,8 +37,8 @@ class Settings(BaseSettings):
 
     # API settings
     host: str = '0.0.0.0'
-    port: int = 8000
-    base_url: str = 'http://localhost:8000'
+    port: int = 5000
+    base_url: str = 'http://localhost:5000'
 
     # For testing and development
     dev_mode: bool = False
@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     website_url: str = 'http://localhost:3000'
 
     # CORS
-    allowed_origins: str = 'http://localhost:5173,http://localhost:8000,http://localhost:3000'
+    allowed_origins: str = 'http://localhost:5001,http://localhost:5000,http://localhost:3000'
 
     # JWT authentication
     secret_key: str = DEFAULT_DEV_JWT_SECRET
@@ -56,7 +56,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 12  # 12 hours
 
     # Frontend
-    frontend_url: str = 'http://localhost:5173'
+    frontend_url: str = 'http://localhost:5001'
 
     # Sentry
     sentry_dsn: Optional[str] = None

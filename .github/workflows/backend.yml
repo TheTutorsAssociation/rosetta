@@ -74,6 +74,15 @@ jobs:
     - name: Run tests with coverage
       run: make test-cov
 
+    - name: Upload coverage to Codecov
+      if: ${{ !cancelled() }}
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./backend/coverage.xml
+        flags: backend
+        fail_ci_if_error: false
+
     - name: Patch coverage report
       if: github.event_name == 'pull_request'
       run: uvx diff-cover coverage.xml --compare-branch=origin/${{ github.base_ref }} --fail-under=100

@@ -3,7 +3,7 @@ import { config } from 'dotenv';
 
 config({ path: '.env.e2e' });
 
-const baseURL = process.env.E2E_BASE_URL || 'http://localhost:5173';
+const baseURL = process.env.E2E_BASE_URL || 'http://localhost:5001';
 
 export default defineConfig({
   testDir: './e2e',

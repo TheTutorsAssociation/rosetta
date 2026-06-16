@@ -28,32 +28,34 @@
   --color-current: currentColor;
   --color-inherit: inherit;
 
-  /* ---- Primary (brand / primary action) — TTA deep red ---- */
-  --color-primary-50: #fdf2f4;
-  --color-primary-100: #fbe1e6;
-  --color-primary-200: #f6c2cd;
-  --color-primary-300: #ee93a8;
-  --color-primary-400: #e25a78;
-  --color-primary-500: #c8324f;
-  --color-primary-600: #a51d3a;
-  --color-primary-700: #87162f;
-  --color-primary-800: #6f1528;
-  --color-primary-900: #5c1524;
+  /* ---- Primary (brand / primary action) — TTA royal blue ----
+     Anchored on the live site's Astra brand colours: #091697 (brand), #000063
+     (navy, hover/dark), #BFD1FF (light tint). thetutorsassociation.org.uk */
+  --color-primary-50: #eef1ff;
+  --color-primary-100: #dde3ff;
+  --color-primary-200: #bfd1ff;
+  --color-primary-300: #9aa9f4;
+  --color-primary-400: #5f6fe0;
+  --color-primary-500: #2f41c4;
+  --color-primary-600: #091697;
+  --color-primary-700: #000063;
+  --color-primary-800: #00004f;
+  --color-primary-900: #00003a;
   --color-primary: var(--color-primary-600);
   --color-primary-soft: var(--color-primary-50);
   --color-primary-dark: var(--color-primary-700);
 
-  /* ---- Secondary (accent) ---- */
-  --color-secondary-50: #f5f3ff;
-  --color-secondary-100: #ede9fe;
-  --color-secondary-200: #ddd6fe;
-  --color-secondary-300: #c4b5fd;
-  --color-secondary-400: #a78bfa;
-  --color-secondary-500: #8b5cf6;
-  --color-secondary-600: #7c3aed;
-  --color-secondary-700: #6d28d9;
-  --color-secondary-800: #5b21b6;
-  --color-secondary-900: #4c1d95;
+  /* ---- Secondary (accent) — TTA maroon (the site's link-hover accent #630000) ---- */
+  --color-secondary-50: #fbeaea;
+  --color-secondary-100: #f6cccc;
+  --color-secondary-200: #eda3a3;
+  --color-secondary-300: #e07474;
+  --color-secondary-400: #c74545;
+  --color-secondary-500: #9e2020;
+  --color-secondary-600: #630000;
+  --color-secondary-700: #520000;
+  --color-secondary-800: #420000;
+  --color-secondary-900: #330000;
   --color-secondary: var(--color-secondary-600);
   --color-secondary-soft: var(--color-secondary-50);
   --color-secondary-dark: var(--color-secondary-700);

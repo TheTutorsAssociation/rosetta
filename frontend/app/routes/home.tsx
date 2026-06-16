@@ -7,8 +7,8 @@ export function meta(): Route.MetaDescriptors {
 }
 
 /**
- * Index route. The rosetta landing screen: a deep-red serif wordmark, a short
- * subtitle, and a link into the sign-in flow.
+ * Index route. The rosetta landing screen: a TTA royal-blue serif wordmark, a
+ * short subtitle, and a link into the sign-in flow.
  */
 export default function Home() {
   return (

@@ -1,26 +1,40 @@
 import { screen, fireEvent } from '@testing-library/react';
 import { Table } from '~/components/ui';
 import type { Column } from '~/components/ui';
-import type { Item } from '~/types';
-import { buildItems, mockItems } from '../../mocks';
 import { renderWithRouter } from '../../utils/render';
 import { createRouteStub } from '../../utils/createStub';
 
-const columns: Column<Item>[] = [
+type Row = { id: number; name: string; status: string };
+
+const rows: Row[] = [
+  { id: 1, name: 'First item', status: 'active' },
+  { id: 2, name: 'Second item', status: 'draft' },
+  { id: 3, name: 'Third item', status: 'archived' },
+];
+
+function buildRows(count: number): Row[] {
+  return Array.from({ length: count }, (_unused, index) => ({
+    id: index + 1,
+    name: `Item ${index + 1}`,
+    status: 'active',
+  }));
+}
+
+const columns: Column<Row>[] = [
   { header: 'Name', cell: (row) => row.name, sortKey: 'name' },
   { header: 'Status', cell: (row) => row.status },
 ];
 
 describe('Table', () => {
   it('renders a row for each item using the column cells', () => {
-    renderWithRouter(<Table columns={columns} rows={mockItems} />);
+    renderWithRouter(<Table columns={columns} rows={rows} />);
     expect(screen.getByText('First item')).toBeInTheDocument();
     expect(screen.getByText('Second item')).toBeInTheDocument();
     expect(screen.getByText('Third item')).toBeInTheDocument();
   });
 
   it('renders the column headers', () => {
-    renderWithRouter(<Table columns={columns} rows={mockItems} />);
+    renderWithRouter(<Table columns={columns} rows={rows} />);
     expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument();
   });
@@ -34,7 +48,7 @@ describe('Table', () => {
     renderWithRouter(
       <Table
         columns={columns}
-        rows={mockItems}
+        rows={rows}
         sort={{ orderBy: 'name', orderDirection: 'asc' }}
         onSortChange={jest.fn()}
       />,
@@ -49,7 +63,7 @@ describe('Table', () => {
     renderWithRouter(
       <Table
         columns={columns}
-        rows={mockItems}
+        rows={rows}
         sort={{ orderBy: 'name', orderDirection: 'desc' }}
         onSortChange={jest.fn()}
       />,
@@ -62,9 +76,7 @@ describe('Table', () => {
 
   it('calls onSortChange with the column sortKey when a sortable header is activated', () => {
     const onSortChange = jest.fn();
-    renderWithRouter(
-      <Table columns={columns} rows={mockItems} sort={{}} onSortChange={onSortChange} />,
-    );
+    renderWithRouter(<Table columns={columns} rows={rows} sort={{}} onSortChange={onSortChange} />);
     fireEvent.click(screen.getByRole('button', { name: /Name/ }));
     expect(onSortChange).toHaveBeenCalledWith('name');
   });
@@ -75,11 +87,7 @@ describe('Table', () => {
         {
           path: '/items',
           Component: () => (
-            <Table
-              columns={columns}
-              rows={[mockItems[0]]}
-              getRowHref={(row) => `/items/${row.id}`}
-            />
+            <Table columns={columns} rows={[rows[0]]} getRowHref={(row) => `/items/${row.id}`} />
           ),
         },
         { path: '/items/1', Component: () => <p>Item detail</p> },
@@ -96,11 +104,7 @@ describe('Table', () => {
         {
           path: '/items',
           Component: () => (
-            <Table
-              columns={columns}
-              rows={[mockItems[0]]}
-              getRowHref={(row) => `/items/${row.id}`}
-            />
+            <Table columns={columns} rows={[rows[0]]} getRowHref={(row) => `/items/${row.id}`} />
           ),
         },
         { path: '/items/1', Component: () => <p>Item detail</p> },
@@ -113,7 +117,7 @@ describe('Table', () => {
 
   it('embeds pagination when total spans more than one page', () => {
     renderWithRouter(
-      <Table columns={columns} rows={buildItems(20)} total={60} page={1} pageSize={20} />,
+      <Table columns={columns} rows={buildRows(20)} total={60} page={1} pageSize={20} />,
     );
     expect(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument();
   });

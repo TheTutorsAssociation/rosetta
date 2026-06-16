@@ -18,6 +18,7 @@
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif,
     'Apple Color Emoji', 'Segoe UI Emoji';
+  --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   /* ---- Base colours ---- */
@@ -27,17 +28,17 @@
   --color-current: currentColor;
   --color-inherit: inherit;
 
-  /* ---- Primary (brand / primary action) ---- */
-  --color-primary-50: #eff6ff;
-  --color-primary-100: #dbeafe;
-  --color-primary-200: #bfdbfe;
-  --color-primary-300: #93c5fd;
-  --color-primary-400: #60a5fa;
-  --color-primary-500: #3b82f6;
-  --color-primary-600: #2563eb;
-  --color-primary-700: #1d4ed8;
-  --color-primary-800: #1e40af;
-  --color-primary-900: #1e3a8a;
+  /* ---- Primary (brand / primary action) — TTA deep red ---- */
+  --color-primary-50: #fdf2f4;
+  --color-primary-100: #fbe1e6;
+  --color-primary-200: #f6c2cd;
+  --color-primary-300: #ee93a8;
+  --color-primary-400: #e25a78;
+  --color-primary-500: #c8324f;
+  --color-primary-600: #a51d3a;
+  --color-primary-700: #87162f;
+  --color-primary-800: #6f1528;
+  --color-primary-900: #5c1524;
   --color-primary: var(--color-primary-600);
   --color-primary-soft: var(--color-primary-50);
   --color-primary-dark: var(--color-primary-700);

@@ -7,13 +7,13 @@ function renderHome(): void {
 }
 
 describe('home route', () => {
-  it('renders a welcome heading', () => {
+  it('renders the rosetta wordmark heading', () => {
     renderHome();
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/welcome to/i);
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('rosetta');
   });
 
-  it('links through to the items list', () => {
+  it('links through to the sign-in page', () => {
     renderHome();
-    expect(screen.getByRole('link', { name: /view items/i })).toHaveAttribute('href', '/items');
+    expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute('href', '/login');
   });
 });

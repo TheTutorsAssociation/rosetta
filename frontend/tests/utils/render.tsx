@@ -1,7 +1,7 @@
 import { type ReactElement } from 'react';
 import { render, type RenderOptions, type RenderResult } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { AppProviders } from '~/providers/AppProviders';
+import { ToastProvider } from '~/providers/ToastProvider';
 
 export interface RenderWithRouterOptions extends Omit<RenderOptions, 'wrapper'> {
   /** Initial URL the in-memory router starts at. Defaults to `/`. */
@@ -26,14 +26,18 @@ export function renderWithRouter(
 
 /**
  * Like {@link renderWithRouter}, but additionally wraps `ui` in
- * {@link AppProviders} so context-dependent components (e.g. anything calling
+ * {@link ToastProvider} so context-dependent components (e.g. anything calling
  * `useToast`) work. Use this for component tests by default.
+ *
+ * Note: this wraps in `ToastProvider` directly rather than the full
+ * `AppProviders` so unrelated component tests don't also mount `AuthProvider`
+ * (which would fire `checkUser()` and may navigate to `/login`).
  */
 export function renderWithProviders(
   ui: ReactElement,
   { initialPath = '/', ...options }: RenderWithRouterOptions = {},
 ): RenderResult {
-  const router = createMemoryRouter([{ path: '*', element: <AppProviders>{ui}</AppProviders> }], {
+  const router = createMemoryRouter([{ path: '*', element: <ToastProvider>{ui}</ToastProvider> }], {
     initialEntries: [initialPath],
   });
   return render(<RouterProvider router={router} />, options);

@@ -15,7 +15,7 @@ from app.auth.login import get_password_hash  # noqa: E402
 from app.auth.models import User, UserRole  # noqa: E402
 from app.core.database import get_session  # noqa: E402
 
-SEED_ADMIN_EMAIL = os.getenv('SEED_ADMIN_EMAIL', 'admin@rosetta.local')
+SEED_ADMIN_EMAIL = os.getenv('SEED_ADMIN_EMAIL', 'admin@example.com')
 SEED_ADMIN_PASSWORD = os.getenv('SEED_ADMIN_PASSWORD', 'rosetta-dev-password')
 
 

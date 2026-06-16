@@ -3,19 +3,19 @@ from typing import Callable
 from fastapi import Depends, Request
 
 from app.auth.jwt import auth_user
-from app.auth.models import User, UserRole
+from app.auth.models import User, UserType
 from app.common.api.errors import HTTP403
 
 
 class PermissionCheck:
-    """A composable role check usable as a FastAPI dependency.
+    """A composable user-type check usable as a FastAPI dependency.
 
     Combine checks with ``|`` (OR) and ``&`` (AND) to build route guards:
 
-        # Single role
+        # Single user type
         Depends(Permission.is_admin)
 
-        # Either role
+        # Either user type
         Depends(Permission.is_admin | Permission.is_member)
 
         # Both conditions (e.g. once feature-flag checks are added)
@@ -58,17 +58,17 @@ class _AnonymousPermission:
         pass
 
 
-def role_check(role: UserRole) -> PermissionCheck:
-    """Build a ``PermissionCheck`` that passes for a given role (or any superadmin).
+def user_type_check(user_type: UserType) -> PermissionCheck:
+    """Build a ``PermissionCheck`` that passes for a given user type (or any superadmin).
 
-    Use this to gate routes on custom roles you add to ``UserRole`` without hand-writing a
+    Use this to gate routes on custom user types you add to ``UserType`` without hand-writing a
     new ``PermissionCheck`` each time.
     """
-    return PermissionCheck(lambda user: user.role == role or user.is_superadmin, role.value.capitalize())
+    return PermissionCheck(lambda user: user.user_type == user_type or user.is_superadmin, user_type.value.capitalize())
 
 
 class Permission:
-    """Role-based access guards applied as route dependencies.
+    """User-type-based access guards applied as route dependencies.
 
     Usage:
         # As a route dependency

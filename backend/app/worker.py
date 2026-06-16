@@ -1,8 +1,8 @@
 """Celery worker entry point.
 
-Run with ``celery -A app.worker worker``. Importing the task modules here registers them
-with the worker's task registry (the same modules are imported in the FastAPI lifespan so
-the web process can enqueue them).
+Run with ``celery -A app.worker worker``. Import the task modules here once domain tasks
+exist so they register with the worker's task registry (the same modules are imported in the
+FastAPI lifespan so the web process can enqueue them).
 """
 
 from celery.signals import worker_process_init
@@ -11,7 +11,6 @@ from app.core.celery import celery_app
 from app.core.config import settings
 from app.core.logging import configure_logfire
 from app.core.sentry import init_sentry
-from app.example_domain import tasks  # noqa: F401
 
 
 @worker_process_init.connect

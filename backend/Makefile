@@ -1,4 +1,8 @@
-.PHONY: install install-dev test test-cov lint type-check format run-dev run-worker reset-test-db clean help
+.PHONY: install install-dev test test-cov lint type-check format run-dev run-worker seed reset-test-db clean help
+
+# Dev server bind address. Override per-run, e.g. `make run-dev PORT=8000`.
+HOST ?= 0.0.0.0
+PORT ?= 5000
 
 # Install dependencies (runtime only)
 install:
@@ -32,13 +36,17 @@ format:
 	uv run ruff check --fix .
 	uv run ruff format .
 
-# Run the development server
+# Run the development server (binds $(HOST):$(PORT), default 0.0.0.0:5000)
 run-dev:
-	uv run uvicorn app.main:app --reload
+	uv run uvicorn app.main:app --reload --host $(HOST) --port $(PORT)
 
 # Run the Celery worker
 run-worker:
 	uv run celery -A app.worker worker -l info
+
+# Seed a development superadmin (idempotent)
+seed:
+	uv run python scripts/seed.py
 
 # Reset the test database (drop and recreate)
 reset-test-db:
@@ -61,7 +69,8 @@ help:
 	@echo "  lint           - Run ruff check + ruff format --check + ty"
 	@echo "  type-check     - Type check code with ty"
 	@echo "  format         - Auto-fix lint issues and format code"
-	@echo "  run-dev        - Run the development server"
+	@echo "  run-dev        - Run the development server (HOST/PORT overridable, default 0.0.0.0:5000)"
 	@echo "  run-worker     - Run the Celery worker"
+	@echo "  seed           - Seed a development superadmin (idempotent)"
 	@echo "  reset-test-db  - Drop and recreate the test database"
 	@echo "  clean          - Clean up cache files"

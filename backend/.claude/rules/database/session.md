@@ -14,8 +14,8 @@ Use the `DBSession` helper methods (in `app/core/database.py`) for common databa
 Add, commit, and refresh an instance in one call:
 
 ```python
-resource = db.create(ExampleResource(name='Onboarding', organization_id=organization.id))
-# resource.id is now set
+user = db.create(User(last_name='Smith', email='alice@example.com', user_type=UserType.MEMBER, hashed_password=...))
+# user.id is now set
 ```
 
 ### `db.get_or_404(model, **kwargs)`
@@ -23,7 +23,7 @@ resource = db.create(ExampleResource(name='Onboarding', organization_id=organiza
 Get an instance or raise HTTP404:
 
 ```python
-resource = db.get_or_404(ExampleResource, id=resource_id)
+user = db.get_or_404(User, id=user_id)
 # Raises HTTP404 if not found
 ```
 
@@ -41,10 +41,10 @@ if db.exists(User, email='alice@example.com'):
 Get an existing instance or create a new one (like Django's `get_or_create`):
 
 ```python
-organization, created = db.get_or_create(
-    Organization,
-    name='Acme',
-    defaults={'billing_status': BillingStatus.TRIAL},
+user, created = db.get_or_create(
+    User,
+    email='admin@example.com',
+    defaults={'last_name': 'Admin', 'user_type': UserType.ADMIN, 'is_superadmin': True},
 )
 # defaults are only used when creating, not when getting
 ```
@@ -54,11 +54,10 @@ organization, created = db.get_or_create(
 Create a new instance or update an existing one (like Django's `update_or_create`):
 
 ```python
-api_key, created = db.create_or_update(
-    OrganizationApiKey,
-    organization_id=organization.id,
-    name='CI key',
-    defaults={'last4': last4, 'hashed_key': hashed_key},
+user, created = db.create_or_update(
+    User,
+    email='admin@example.com',
+    defaults={'last_name': 'Admin', 'user_type': UserType.ADMIN},
 )
 # defaults are applied on both create AND update. This commits — do NOT commit again.
 ```
@@ -70,9 +69,9 @@ api_key, created = db.create_or_update(
 ```python
 from app.core.database import DBSession, get_db
 
-@router.get('/example-resources')
-def list_resources(db: DBSession = Depends(get_db)):
-    return db.exec(select(ExampleResource)).all()
+@router.get('/users')
+def list_users(db: DBSession = Depends(get_db)):
+    return db.exec(select(User)).all()
 ```
 
 ### In Celery tasks (context manager)
@@ -80,10 +79,10 @@ def list_resources(db: DBSession = Depends(get_db)):
 ```python
 from app.core.database import get_session
 
-@celery_app.task(name='example_domain.tasks.process_example_resource')
-def process_example_resource(example_resource_id: int) -> None:
+@celery_app.task(name='members.tasks.sync_member')
+def sync_member(user_id: int) -> None:
     with get_session() as db:
-        resource = db.get_or_404(ExampleResource, id=example_resource_id)
+        user = db.get_or_404(User, id=user_id)
         # session auto-commits on success, rolls back on exception
 ```
 

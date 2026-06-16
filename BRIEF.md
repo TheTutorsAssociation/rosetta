@@ -48,7 +48,7 @@ TEC-03 / WEB-01 / PRT-10) describe *Nucleus's* model, **not ours**. We mine the 
 
 Backend **FastAPI · SQLModel · Celery · Postgres · Redis** (Python 3.12, `uv`, `ruff`, `ty`, `pytest`,
 100% patch coverage). Frontend **React Router v7 (SSR) · React 19 · Tailwind v4 · Vite** (TypeScript,
-`npm`, ESLint, Prettier, Jest 80/75/70/75, Playwright).
+`npm`, ESLint, Prettier, Jest 100% coverage, Playwright).
 
 **Keep (best practice):** backend slice layout from `app/example_domain/` — `_Base`/`Table`/`Basic`/
 `List`/`Detail` SQLModel split, `api/` router (CRUD + `ListFilter`/`ListOrder` + `OPTIONS` +
@@ -68,7 +68,9 @@ title / logfire service → `rosetta`; wire `AuthProvider` + `/auth/login` + `/u
 ## 4. Domain model (all fresh models)
 
 **Build-now (Section A):**
-1. **`User`** (admin/superadmin) — TTA staff. Member-login users come with the deferred member hub.
+1. **`User`** — the single login model; a `user_type` enum (`UserType`) of `ADMIN` / `MEMBER` / `CONTACT`
+   (Contact = a non-member who can still log in) plus an orthogonal `is_superadmin` flag. `email` is
+   unique across all user types. TTA staff are `ADMIN`; member-login users (`MEMBER`) come with the hub.
 2. **`Member`** — named person holding/covered by a membership. Personal (name, email unique, phone,
    WhatsApp, address incl. **business address**, about, **tuition type**, **subject specialisms**,
    **tuition/qualification levels**, qualifications, **delivery mode** online/in-person/both, photo,
@@ -103,8 +105,9 @@ title / logfire service → `rosetta`; wire `AuthProvider` + `/auth/login` + `/u
    (email-verify), **`share_publicly`**. Replaces the Google Form.
 9. **`AuditEntry`** — append-only log of membership/compliance status & level changes (who/what/when),
    surfaced as the member notes timeline. [COM-05]
-10. **Member auth** — members log in as a `User` with role `MEMBER` linked 1:1 to their `Member`
-    (staff are `ADMIN`/`SUPERADMIN`). Drives the member hub; `Permission` gates member vs staff routes.
+10. **Member auth** — members log in as a `User` with `user_type` `MEMBER` linked 1:1 to their `Member`
+    (staff are `ADMIN`, with `is_superadmin` for elevated access). Drives the member hub; `Permission`
+    gates member vs staff routes.
 11. **`Resource`** — structured member-hub content (documents, links, logos, notices), optionally
     tier-gated; managed in the admin (not freeform pages). Powers the hub's resource library + logos.
 
@@ -169,7 +172,7 @@ custom fields, back-end-only access link revealed post-registration, attendance)
   initiation, member activation, renewal reminders 1/2, renewal day, grace, lapsed, renewal
   pending/confirmed, recurring-renewal-failed, card-expiry) to Mailchimp journeys. Wired into the Members
   module rather than bolted on later.
-- **F · Member login area & hub (in scope):** member auth (`User` role `MEMBER` ↔ `Member`); member
+- **F · Member login area & hub (in scope):** member auth (`User` with `user_type` `MEMBER` ↔ `Member`); member
   dashboard (status, compliance/DBS to-dos, upcoming events, quick links); **self-service profile**
   (configurable fields + admin approval, MEM-09); resource library + logos + legal helpline + partner
   discounts list (from the `Resource` model); events browse/register; DBS/CPD info pages — all pulling live
@@ -215,7 +218,7 @@ Labels: `epic`, `backend`, `frontend`, `infra`, `deferred`, `question`. Mileston
 ## 10. Verification
 - **Backend:** `make lint && make test-cov` (ruff + ty + pytest, 100% patch coverage; `count_queries` on
   list/report endpoints). CI runs `alembic upgrade head` on a fresh DB.
-- **Frontend:** `npm run lint && npm test` (Jest 80/75/70/75) + `npm run test:e2e` (Playwright: signup →
+- **Frontend:** `npm run lint && npm test` (Jest 100% coverage) + `npm run test:e2e` (Playwright: signup →
   approve → member detail; compliance view).
 - **Manual e2e:** run both servers; Tom self-signs-up as a test member (spare email; Julius approves). Stripe
   test mode for payments. Demo each module against the equivalent Wild Apricot screen.

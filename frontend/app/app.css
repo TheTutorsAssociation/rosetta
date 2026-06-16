@@ -99,13 +99,6 @@
   --color-error-soft: var(--color-error-50);
   --color-error-dark: var(--color-error-700);
 
-  /* ---- Spacing (extends Tailwind's default scale with named steps) ---- */
-  --spacing-xs: 0.5rem;
-  --spacing-sm: 0.75rem;
-  --spacing-md: 1rem;
-  --spacing-lg: 1.5rem;
-  --spacing-xl: 2.5rem;
-
   /* ---- Radii ---- */
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;

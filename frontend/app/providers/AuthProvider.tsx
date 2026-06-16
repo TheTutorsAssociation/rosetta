@@ -42,6 +42,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const checkAuth = async (): Promise<void> => {
       if (!safeGetItem(TOKEN_KEY)) {
+        // No await precedes this synchronous branch, so `cancelled` is always false here.
+        /* istanbul ignore next */
         if (cancelled) {
           return;
         }

@@ -23,10 +23,10 @@ module.exports = {
   coverageReporters: ['text', 'lcov'],
   coverageThreshold: {
     global: {
-      statements: 80,
-      branches: 75,
-      functions: 70,
-      lines: 75,
+      statements: 100,
+      branches: 100,
+      functions: 100,
+      lines: 100,
     },
   },
   transformIgnorePatterns: ['node_modules/(?!(.*\\.mjs$))'],

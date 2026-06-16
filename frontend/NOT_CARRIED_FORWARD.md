@@ -1,13 +1,34 @@
 # Not Carried Forward
 
-This template was generalized from a real production app. This file is the **curation record**:
-the patterns, dependencies, and config that the source app had but this starter deliberately
-**drops or demotes**, with the reasoning. It exists so that future maintainers (and coding
-agents) understand that these omissions are intentional, not oversights — and don't "helpfully"
-add them back.
+This frontend was scaffolded from the
+[`tc-fullstack-starter`](https://github.com/tutorcruncher/tc-fullstack-starter) template, which was
+itself generalized from a real production app. This file is the **curation record**: the patterns,
+dependencies, and config that were dropped, demoted, or trimmed, with the reasoning. It exists so
+that future maintainers (and coding agents) understand that these omissions are intentional, not
+oversights — and don't "helpfully" add them back.
 
 The companion docs explain what we *did* keep: [`CLAUDE.md`](./CLAUDE.md),
 [`STYLE_GUIDE.md`](./STYLE_GUIDE.md), [`TESTING_GUIDE.md`](./TESTING_GUIDE.md).
+
+---
+
+## Trimmed after scaffolding (rosetta-specific)
+
+The template ships a full pattern library to copy by analogy. rosetta keeps only the production
+code it actually uses, so the unused scaffolding was removed and now lives **only** in the
+[`tc-fullstack-starter`](https://github.com/tutorcruncher/tc-fullstack-starter) template:
+
+- **The example "Items" resource** (routes, components, types, mocks, e2e spec).
+- **Unused UI primitives**: `Table`, `Modal`, `Select`, `Pagination`, `SearchInput`, `Badge`,
+  `Card`, `LoadingState`, and the `Textarea` variant of `Input`. The kept primitives are `Button`,
+  `Input`, `Heading`, `Alert`, `ErrorState`.
+- **The icon factory** (`components/icons/Icon.tsx`, the `makeIcon` aliases) — nothing imported it
+  once `SearchInput` was removed.
+- **Unused hooks**: `useOrderParams`, `useAsyncAction`, `useClickOutside`.
+- **Unused helpers**: `dateFormatting`, `pagination`, and the `ListApiResponse<T>` type.
+
+Coverage is held at **100%** on what remains. Port any of the above from the template (with its
+test) when a feature genuinely needs it.
 
 ---
 
@@ -24,9 +45,10 @@ The companion docs explain what we *did* keep: [`CLAUDE.md`](./CLAUDE.md),
 **Why dropped (as the default):** Pragmatic for an internal live-polling dashboard, but **route
 loaders/actions are the canonical RR7 framework-mode pattern** and the better default for a
 teachable template — they give SSR data, automatic revalidation, and progressive enhancement, and
-centralize error handling. The example "Items" feature loads via loaders and mutates via actions.
-The component-fetch approach is **still documented** as the alternative for live/polling screens in
-[`docs/CUSTOMIZATION.md`](./docs/CUSTOMIZATION.md); it is simply no longer the default.
+centralize error handling. The `/login` route loads/mutates via the loader/action pattern (a
+`clientAction`). The component-fetch approach is **still documented** as the alternative for
+live/polling screens in [`docs/CUSTOMIZATION.md`](./docs/CUSTOMIZATION.md); it is simply not the
+default.
 
 ### 3. Root-level conditional app chrome
 **Was:** `root.tsx` used `isPublicRoute()` to conditionally render a Sidebar / AuthGate /
@@ -48,9 +70,9 @@ aren't assumed to be Python).
 ### 5. Domain feature code
 **Was:** Hooks, components, types, and routes for the source domain (lessons, courses, students,
 tutors, clients, billing, transcripts, a Calendar, a MarkdownEditor, create-resource modals, etc.).
-**Why dropped:** Entirely domain-specific. Replaced by the neutral **"Items"** feature, which
-exercises the same patterns (list/detail/form, loader/action round-trip, table, react-select) with
-zero domain vocabulary.
+**Why dropped:** Entirely domain-specific. The template replaces them with a neutral **"Items"**
+feature exercising the same patterns (list/detail/form, loader/action round-trip, table); rosetta
+trims even that (see "Trimmed after scaffolding" above) and builds its own resources by analogy.
 
 ### 6. Vendor monitoring & analytics, and hard-on Sentry
 **Was:** Amplitude (product analytics + session replay), Microsoft Clarity (session replay/heatmaps),
@@ -68,8 +90,8 @@ optionals** (they self-disable when their env var is unset — see `app/helpers/
 dependencies.
 **Why dropped/demoted:** Not core to a generic starter. **`@mdxeditor/editor` is dropped outright**
 (heavy, domain-specific rich-text editing). `react-datepicker`, `framer-motion`, and
-`markdown-to-jsx` are **demoted to documented optionals** — the `Modal` animates with CSS keyframes
-(no `framer-motion`), date inputs can use the native `Date` API, and `prose.css` styles markdown
+`markdown-to-jsx` are **demoted to documented optionals** — animation uses CSS keyframes (no
+`framer-motion`), date inputs can use the native `Date` API, and `prose.css` styles markdown
 without a renderer. Add any of them only if a feature needs it.
 
 ### 8. Ad-hoc class composition and mixed icon strategies
@@ -114,11 +136,12 @@ components.
 | Microsoft Clarity | **Dropped** | Session-replay vendor; domain privacy coupling. |
 | `@sentry/react-router` | **Optional** | Kept, but gated behind `VITE_SENTRY_DSN` — not an unconditional `Sentry.init`. |
 | `@pydantic/logfire-browser` (+ `@opentelemetry/auto-instrumentations-web`) | **Optional** | Tracing; init only when `VITE_LOGFIRE_TRACE_URL` is set. |
-| `framer-motion` | **Optional** | Animation; `Modal` works via CSS keyframes without it. |
+| `framer-motion` | **Optional** | Animation; CSS keyframes cover current needs without it. |
 | `react-datepicker` | **Optional** | Date inputs; native `Date` API is enough for the example. |
 | `markdown-to-jsx` | **Optional** | Only if rendering markdown/prose content. |
-| yarn | **Dropped** | Template standardizes on npm (`npm ci` in CI, Husky, Docker; `package-lock.json` committed). |
+| `react-select` (+ `react-select-event`) | **Dropped** | Only the (now-removed) `Select` primitive used it. Re-add with the primitive from the template if needed. |
+| `luxon` (+ `@types/luxon`) | **Dropped** | Only the (now-removed) `dateFormatting` helper used it. Re-add when you need date formatting. |
+| yarn | **Dropped** | Standardized on npm (`npm ci` in CI, Husky, Docker; `package-lock.json` committed). |
 
-Default runtime deps that **are** kept: `react`, `react-dom`, `react-router` (+ `@react-router/node`,
-`@react-router/serve`), `tailwindcss` (+ `@tailwindcss/vite`), `luxon`, `lucide-react`,
-`react-select`, `isbot`, `clsx`.
+Runtime deps that **are** kept: `react`, `react-dom`, `react-router` (+ `@react-router/node`,
+`@react-router/serve`), `tailwindcss` (+ `@tailwindcss/vite`), `lucide-react`, `isbot`, `clsx`.

@@ -129,7 +129,11 @@ function ToastView({ toast, onClose }: { toast: ToastItem; onClose: (id: string)
     if (toast.duration === 0) {
       return;
     }
-    const timer = setTimeout(() => onClose(toast.id), toast.duration ?? DEFAULT_DURATION);
+    // `showToast` always sets `duration`, so the `?? DEFAULT_DURATION` fallback is unreachable via the public API.
+    const timer = setTimeout(
+      () => onClose(toast.id),
+      /* istanbul ignore next */ toast.duration ?? DEFAULT_DURATION,
+    );
     return () => clearTimeout(timer);
   }, [toast.id, toast.duration, onClose]);
 

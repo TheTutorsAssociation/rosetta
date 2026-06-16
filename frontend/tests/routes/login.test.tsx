@@ -1,6 +1,6 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import Login, { clientAction } from '~/routes/auth/login';
+import Login, { clientAction, meta } from '~/routes/auth/login';
 import { ApiError, authApi } from '~/data/api';
 import { safeSetItem } from '~/helpers/storage';
 import { createRouteStub } from '../utils/createStub';
@@ -88,5 +88,34 @@ describe('login route', () => {
 
     expect(result).toEqual({ error: 'Enter your email and password.' });
     expect(mockLogin).not.toHaveBeenCalled();
+  });
+
+  it('returns a validation error when the form has no fields at all', async () => {
+    const request = new Request('http://localhost/login', {
+      method: 'POST',
+      body: new FormData(),
+    });
+
+    const result = await clientAction({ request } as Parameters<typeof clientAction>[0]);
+
+    expect(result).toEqual({ error: 'Enter your email and password.' });
+    expect(mockLogin).not.toHaveBeenCalled();
+  });
+
+  it('re-throws unexpected non-ApiError failures so they reach the ErrorBoundary', async () => {
+    mockLogin.mockRejectedValue(new Error('network down'));
+    const formData = new FormData();
+    formData.set('email', 'ada@example.com');
+    formData.set('password', 'hunter2');
+    const request = new Request('http://localhost/login', { method: 'POST', body: formData });
+
+    await expect(clientAction({ request } as Parameters<typeof clientAction>[0])).rejects.toThrow(
+      'network down',
+    );
+    expect(mockSetItem).not.toHaveBeenCalled();
+  });
+
+  it('builds the page title from meta', () => {
+    expect(meta()).toContainEqual({ title: 'Sign in | rosetta' });
   });
 });

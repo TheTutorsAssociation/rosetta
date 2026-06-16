@@ -1,9 +1,11 @@
 # Customization
 
-Recipes for turning this starter into your app, and for the patterns that were deliberately left as
-opt-in rather than baked in. The end-to-end "add a resource" flow is summarized in
-[`../README.md`](../README.md) and [`../CLAUDE.md`](../CLAUDE.md); this doc covers the individual
-knobs.
+Knobs for extending the rosetta frontend, and the patterns deliberately left opt-in rather than
+baked in. The "what's here / what to edit first" overview is in [`../README.md`](../README.md) and
+[`../CLAUDE.md`](../CLAUDE.md). To add a full resource (types, api object, route tree,
+list/detail/form, tables, pagination, an e2e spec), copy the worked example from the
+[`tc-fullstack-starter`](https://github.com/tutorcruncher/tc-fullstack-starter) template by analogy;
+this doc covers the individual knobs.
 
 ## Change the `~` path alias
 
@@ -37,17 +39,14 @@ export function AppProviders({ children }: { children: ReactNode }): JSX.Element
 Inside the provider, memoize the context value (`useMemo`) and any exposed handlers (`useCallback`)
 so consumers don't re-render needlessly. Put the provider file in `app/providers/`.
 
-### Wiring the AuthProvider
+### The AuthProvider (wired)
 
-`app/providers/AuthProvider.tsx` ships ready to use but is intentionally **not wired** into
-`AppProviders`, and the example "Items" API is called **without** auth, so the template runs against
-any backend with no login. To enable auth:
-
-1. Point `authApi.checkUser()` in `app/data/api.ts` at your real "current user" endpoint (it defaults
-   to `GET /users/me`).
-2. Nest `<AuthProvider>` inside `AppProviders` (outermost), as shown in `AppProviders.tsx`.
-3. Add real login (a `/login` route + an action that stores the token) and confirm `/login` is in
-   `PUBLIC_ROUTES` in `app/helpers/routes.ts`.
+Auth is **already wired** in this codebase: `AppProviders` nests `<AuthProvider>` outermost, the
+`/login` route is live, and `/login` is in `PUBLIC_ROUTES` in `app/helpers/routes.ts`. On load,
+`AuthProvider` reads the bearer token via `safeGetItem`, validates it by calling
+`authApi.checkUser()` (`GET /users/me`), and on failure (or no token) redirects non-public traffic
+to `/login` preserving the attempted URL. To point it at a different backend, change the endpoints
+in `authApi` (`app/data/api.ts`); to mark more routes public, extend `PUBLIC_ROUTES`.
 
 ### The SSR token-auth caveat
 
@@ -86,10 +85,9 @@ To reskin, edit that one block:
 ```
 
 Tokens become utilities automatically (`bg-primary-500`, `text-h1`, `p-gutter`) and CSS variables
-(`var(--color-primary-500)`). Add the **z-layer scale** here too (e.g. `--z-modal`, `--z-toast`)
-rather than scattering magic `z-index` numbers through components. Change `APP_NAME` in
-`app/helpers/meta.ts` (currently `'RR Starter'`) so page titles read correctly. Tweak `prose.css`
-if you render markdown.
+(`var(--color-primary-500)`). Add a **z-layer scale** here too (e.g. `--z-toast`) rather than
+scattering magic `z-index` numbers through components. `APP_NAME` in `app/helpers/meta.ts` is the
+page-title suffix (`'rosetta'`). Tweak `prose.css` if you render markdown.
 
 ## Disable SSR (SPA mode)
 
@@ -180,14 +178,14 @@ client** (still never a bare `fetch()`):
 
 ```tsx
 export default function LiveDashboard(): JSX.Element {
-  const [data, setData] = useState<Item[]>([]);
+  const [data, setData] = useState<Row[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     async function poll(): Promise<void> {
       try {
-        const r = await itemsApi.list();
+        const r = await someApi.list();
         if (!cancelled) setData(r.items);
       } catch (err) {
         if (!cancelled) setError(err instanceof ApiError ? err.message : 'Failed to load');
@@ -202,7 +200,7 @@ export default function LiveDashboard(): JSX.Element {
   }, []);
 
   if (error) return <ErrorState message={error} />;
-  return <ItemsTable items={data} />;
+  return <DataTable rows={data} />;
 }
 ```
 
@@ -213,9 +211,9 @@ Use this **only** for genuinely live data; everything else loads via a route loa
 These were intentionally left out of `package.json` (see
 [`../NOT_CARRIED_FORWARD.md`](../NOT_CARRIED_FORWARD.md)). Add them only when a feature needs them:
 
-- **`framer-motion`** — richer enter/exit transitions. The `Modal` already animates via CSS
-  keyframes (in `app.css` `@layer utilities`); install framer-motion only if you want shared,
-  spring-style motion presets, and define them once rather than inline-per-component.
+- **`framer-motion`** — richer enter/exit transitions. The app already uses CSS keyframes (in
+  `app.css` `@layer utilities`, e.g. the toast entry); install framer-motion only if you want
+  shared, spring-style motion presets, and define them once rather than inline-per-component.
 - **`react-datepicker`** — a full date-picker UI. The starter uses the native `Date` API / native
   inputs; reach for this when you need range selection / locale-heavy pickers.
 - **`markdown-to-jsx`** — render markdown to React. Pair it with `prose.css` (which already styles

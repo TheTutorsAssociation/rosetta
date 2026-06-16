@@ -20,6 +20,16 @@ describe('Button', () => {
     expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
   });
 
+  it('renders the icon after the children when iconPosition is right', () => {
+    renderWithRouter(
+      <Button icon={<span data-testid="icon">→</span>} iconPosition="right">
+        Next
+      </Button>,
+    );
+    const button = screen.getByRole('button', { name: 'Next →' });
+    expect(button).toHaveTextContent(/Next→/);
+  });
+
   it('is disabled and unclickable when disabled', () => {
     const onClick = jest.fn();
     renderWithRouter(

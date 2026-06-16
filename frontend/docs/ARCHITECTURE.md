@@ -1,8 +1,11 @@
 # Architecture
 
-How this starter boots, renders, and moves data. It is a standard **React Router v7
+How the rosetta frontend boots, renders, and moves data. It is a standard **React Router v7
 framework-mode** app with SSR on — this doc explains the pieces so you can reason about (and
-extend) the data flow without surprises.
+extend) the data flow without surprises. The patterns shown for list/detail/form screens are
+not yet present here; port them from the
+[`tc-fullstack-starter`](https://github.com/tutorcruncher/tc-fullstack-starter) template when you
+add a resource.
 
 ## The big picture
 
@@ -48,28 +51,23 @@ initial request (real SSR), then on the client for subsequent client-side naviga
 
 Routes are declared programmatically using the `@react-router/dev/routes` DSL (`index`, `route`,
 `layout`, `prefix`), not by file-system convention. This makes the route tree explicit and easy for
-an agent to extend:
+an agent to extend. The current manifest is minimal:
 
 ```ts
-import { type RouteConfig, index, route, layout, prefix } from '@react-router/dev/routes';
+import { type RouteConfig, index, route } from '@react-router/dev/routes';
 
 export default [
-  index('routes/home.tsx'),
-  ...prefix('items', [
-    index('routes/items/items.tsx'),                  // /items (list)
-    route('new', 'routes/items/item-new.tsx'),        // /items/new
-    layout('routes/items/item-layout.tsx', [          // loads the shared item
-      route(':itemId', 'routes/items/item-detail.tsx'),       // /items/:itemId
-      route(':itemId/edit', 'routes/items/item-edit.tsx'),    // /items/:itemId/edit
-    ]),
-  ]),
-  route('*', 'routes/not-found.tsx'),                 // catch-all 404
+  index('routes/home.tsx'),                 // /
+  route('login', 'routes/auth/login.tsx'),  // /login
+  route('*', 'routes/not-found.tsx'),       // catch-all 404
 ] satisfies RouteConfig;
 ```
 
-The nested `layout(...)` is the key idiom: the layout route runs a loader that fetches the shared
-record once and exposes it to its children (detail, edit) via **`Outlet` context** — so the detail
-and edit routes don't each re-fetch the same item.
+When you add a resource, follow the file convention from the
+[`tc-fullstack-starter`](https://github.com/tutorcruncher/tc-fullstack-starter) template:
+`<resource>/<resource>.tsx` (list), `<resource>-layout.tsx` (a parent that loads the shared record
+once and exposes it to its children via **`Outlet` context**, so detail and edit don't each
+re-fetch), `<resource>-detail.tsx`, `<resource>-new.tsx`, `<resource>-edit.tsx`.
 
 ## Generated `+types` — type-safe routes
 
@@ -78,11 +76,11 @@ route module (under `.react-router/types`, surfaced via the `rootDirs` setting i
 Each route imports its own generated types:
 
 ```tsx
-import type { Route } from './+types/item-detail';
+import type { Route } from './+types/login';
 
-export async function loader({ params }: Route.LoaderArgs) { /* params.itemId is typed */ }
-export function meta(_: Route.MetaArgs) { return buildMetaData('Item'); }
-export default function ItemDetail({ loaderData }: Route.ComponentProps) { /* loaderData is typed */ }
+export async function clientAction({ request }: Route.ClientActionArgs) { /* request is typed */ }
+export function meta(): Route.MetaDescriptors { return buildMetaData('Sign in'); }
+export default function Login() { /* … */ }
 ```
 
 This keeps `params`, `loaderData`, and `meta` type-safe and **breaks the build when the route tree
@@ -94,7 +92,7 @@ All data movement goes through **one typed HTTP client**, `app/data/api.ts`. Com
 never call `fetch()` directly.
 
 ```
-loader/action ──> itemsApi.list()/create()/… ──> apiRequest<T>(path, opts)
+loader/action ──> authApi.login()/checkUser()/… ──> apiRequest<T>(path, opts)
                                                       │
                                           base URL + JSON headers (+ optional token)
                                                       │
@@ -106,48 +104,51 @@ loader/action ──> itemsApi.list()/create()/… ──> apiRequest<T>(path, o
 - **`apiRequest<T>(path, options?)`** — prepends `apiBaseUrl` (from `helpers/env.ts`), sets JSON
   headers (and an optional bearer token from `safeGetItem`), parses the JSON response, and on
   `!response.ok` throws **`ApiError`** with `status` and a message extracted from
-  `json.detail || json.error`.
-- **Resource objects** (e.g. `itemsApi`) group a resource's endpoints:
-  `list(params?) / get(id) / create(payload) / update(id, payload) / remove(id)`. Returns are typed
-  (`PaginatedResponse<Item>`, `Item`, `void`).
+  `json.detail ?? json.error ?? response.statusText`.
+- **Resource objects** group a resource's endpoints. The one that ships is **`authApi`**
+  (`login(email, password)` → `LoginResponse`, `checkUser()` → `User`). When you add a CRUD
+  resource, mirror the `list(params?) / get(id) / create(payload) / update(id, payload) /
+  remove(id)` shape from the
+  [`tc-fullstack-starter`](https://github.com/tutorcruncher/tc-fullstack-starter) template, with
+  typed returns.
 - **`PaginatedResponse<T> = { items: T[]; total: number; page: number; page_size: number }`** is the
-  standard list shape (`page_size` snake_case mirrors a typical backend).
+  standard list-envelope type, ready for when you add a list endpoint (`page_size` snake_case
+  mirrors a typical backend).
 
-### List route (loader + URL-driven state)
+### Worked example — the `/login` route
 
-The list loader reads **URL search params** (page, search, sort) — not component state — and calls
-`api.list`. List state lives in the URL via `useSearchParams` + `useOrderParams`, so back/forward,
-sharing, and reload all work, and the loader is the single source of truth:
-
-```tsx
-export async function loader({ request }: Route.LoaderArgs) {
-  const url = new URL(request.url);
-  return itemsApi.list({
-    page: Number(url.searchParams.get('page') ?? 1),
-    search: url.searchParams.get('search') ?? undefined,
-    order_by: url.searchParams.get('order_by') ?? undefined,
-  });
-}
-```
-
-### Mutations (actions)
-
-Create/edit/delete go through route **actions**. An action calls `api.create`/`api.update`/
-`api.remove`, then either `redirect`s on success or **catches `ApiError` and returns field errors**
-to be rendered in the form:
+`app/routes/auth/login.tsx` is the data-flow reference in this codebase. It uses a **`clientAction`**
+(client-only, because it writes the bearer token to `localStorage`, which the SSR server can't
+reach): it validates the credentials, exchanges them via `authApi.login`, stores the token with
+`safeSetItem`, and `redirect`s to the originally-attempted URL (or `/`). Invalid credentials are
+**caught and returned to the form** as an inline error; unexpected errors are **re-thrown** to the
+`ErrorBoundary`:
 
 ```tsx
-export async function action({ request, params }: Route.ActionArgs) {
+export async function clientAction({ request }: Route.ClientActionArgs) {
   const form = await request.formData();
+  const email = String(form.get('email') ?? '');
+  const password = String(form.get('password') ?? '');
+  if (!email || !password) return { error: 'Enter your email and password.' };
   try {
-    const item = await itemsApi.create({ name: String(form.get('name')) /* … */ });
-    return redirect(`/items/${item.id}`);
+    const { access_token } = await authApi.login(email, password);
+    safeSetItem('token', access_token);
+    return redirect(String(form.get('redirect_url') ?? '') || '/');
   } catch (error) {
-    if (error instanceof ApiError) return { error: error.message };
+    if (error instanceof ApiError) return { error: 'Invalid email or password.' };
     throw error; // unexpected → ErrorBoundary
   }
 }
 ```
+
+### List routes & mutations
+
+List loaders read **URL search params** (page, search, sort) — not component state — and call the
+resource's `list`, so back/forward, sharing, and reload all work. Create/edit/delete go through
+route **actions** that call `create`/`update`/`remove`, then `redirect` on success or catch
+`ApiError` and return field errors. These screens don't exist here yet; the full worked loader,
+URL-driven table, and action examples live in the
+[`tc-fullstack-starter`](https://github.com/tutorcruncher/tc-fullstack-starter) template.
 
 ### Error propagation
 
@@ -162,9 +163,10 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 `app/app.css` is the Tailwind v4 entry (`@import 'tailwindcss'`). Design tokens are declared in its
 `@theme` block (there is no `tailwind.config.js`); `@layer base` styles native form controls,
-`@layer components` defines reusable utility classes, `@layer utilities` holds keyframes (e.g. the
-`Modal` entry animation). Tailwind compiles via the `@tailwindcss/vite` plugin (first in the Vite
-plugin order). `prose.css` is an optional generic markdown stylesheet imported from `app.css`.
+`@layer components` defines reusable utility classes, `@layer utilities` holds keyframes and
+animation helpers (e.g. the toast entry animation). Tailwind compiles via the `@tailwindcss/vite`
+plugin (first in the Vite plugin order). `prose.css` is an optional generic markdown stylesheet
+imported from `app.css`.
 
 ## Vite plugin order
 

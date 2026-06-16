@@ -1,9 +1,11 @@
 # Style Guide
 
-Code conventions for this starter. They are intentionally strict and enforced (ESLint
+Code conventions for the rosetta frontend. They are intentionally strict and enforced (ESLint
 `--max-warnings 0` + Prettier + `tsc --strict`), so an agent or teammate can extend the
 codebase without re-deriving taste. The matching test discipline is in
-[`TESTING_GUIDE.md`](./TESTING_GUIDE.md).
+[`TESTING_GUIDE.md`](./TESTING_GUIDE.md). For patterns not present here (the full UI kit, list
+screens, the icon factory), see the
+[`tc-fullstack-starter`](https://github.com/tutorcruncher/tc-fullstack-starter) template.
 
 ## TypeScript
 
@@ -71,20 +73,20 @@ import { cn } from '~/helpers/cn';
 
 Visual variants are declared as a `Record<Variant, string>` map and composed with `cn()`. This
 keeps styling declarative and auditable, and is the pattern every `ui/` primitive follows
-(`Badge` is the minimal reference implementation).
+(`Alert` is the reference implementation).
 
 ```tsx
-type BadgeVariant = 'neutral' | 'success' | 'warning' | 'error';
+type AlertVariant = 'danger' | 'warning' | 'info' | 'success';
 
-const VARIANT_CLASSES: Record<BadgeVariant, string> = {
-  neutral: 'bg-neutral-100 text-neutral-700',
-  success: 'bg-success-100 text-success-700',
-  warning: 'bg-warning-100 text-warning-700',
-  error: 'bg-error-100 text-error-700',
+const VARIANT_CLASSES: Record<AlertVariant, string> = {
+  danger: 'bg-error-soft border-error-soft text-error',
+  warning: 'bg-warning-soft border-warning-soft text-warning',
+  info: 'bg-info-soft border-info-soft text-info',
+  success: 'bg-success-soft border-success-soft text-success',
 };
 
-export function Badge({ variant = 'neutral', children, className }: BadgeProps): JSX.Element {
-  return <span className={cn('rounded-full px-2 py-0.5 text-small', VARIANT_CLASSES[variant], className)}>{children}</span>;
+export function Alert({ variant = 'danger', children, className }: AlertProps): JSX.Element {
+  return <div role="alert" className={cn('rounded-md border px-4 py-3', VARIANT_CLASSES[variant], className)}>{children}</div>;
 }
 ```
 
@@ -96,8 +98,8 @@ Do not write raw `<h1>`–`<h6>`. Use `Heading` from `~/components/ui`. It separ
 different tag.
 
 ```tsx
-<Heading level={1}>Items</Heading>             // <h1> at display size
-<Heading level={2} as="h1">Edit item</Heading> // visually an h2, semantically the page <h1>
+<Heading level={1}>Sign in</Heading>          // <h1> at display size
+<Heading level={2} as="h1">Page not found</Heading> // visually an h2, semantically the page <h1>
 ```
 
 Exceptions: containers that render externally-styled HTML (e.g. a markdown/prose region) where the
@@ -105,20 +107,14 @@ downstream styling owns the tag.
 
 ## UI primitives
 
-- **Check `app/components/ui/` before writing a new component.** Compose existing primitives
-  (`Button`, `Input`, `Textarea`, `Select`, `Modal`, `Table`, `Pagination`, `Heading`, `Alert`,
-  `Card`, `Badge`, `SearchInput`, `LoadingState`, `ErrorState`).
-- **Import from the barrel**: `import { Button, Table } from '~/components/ui';`.
+- **Check `app/components/ui/` before writing a new component.** The primitives that ship here are
+  `Button`, `Input`, `Heading`, `Alert`, and `ErrorState`. Compose them before writing new ones;
+  the broader kit (Table, Modal, Select, Pagination, SearchInput, Badge, Card, LoadingState) lives
+  in the [`tc-fullstack-starter`](https://github.com/tutorcruncher/tc-fullstack-starter) template —
+  port a primitive from there (with its test) when a screen needs it, rather than reinventing it.
+- **Import from the barrel**: `import { Button, Heading } from '~/components/ui';`.
 - **Accessibility is not optional.** Every interactive element has the right role/label and
-  keyboard support (the `Modal` traps focus and closes on `Escape`; `Table` rows that navigate use
-  `role="link"`; `Alert` uses `role="alert"`).
-
-## Icons
-
-Icons come from the `makeIcon` factory in `~/components/icons/Icon`, which standardizes
-`strokeWidth`, default size, and `displayName` over `lucide-react`. Import the curated aliases
-(`Home`, `Search`, `Plus`, `Pencil`, `Trash`, `ChevronDown`, `X`, …). Do **not** mix raw
-`lucide-react` imports with the wrapped ones — one icon strategy.
+  keyboard support (`Alert` uses `role="alert"`; `Input` wires `aria-invalid`/`aria-describedby`).
 
 ## Providers
 

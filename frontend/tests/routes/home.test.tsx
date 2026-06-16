@@ -1,5 +1,5 @@
 import { screen } from '@testing-library/react';
-import Home from '~/routes/home';
+import Home, { meta } from '~/routes/home';
 import { createRouteStub } from '../utils/createStub';
 
 function renderHome(): void {
@@ -15,5 +15,9 @@ describe('home route', () => {
   it('links through to the sign-in page', () => {
     renderHome();
     expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute('href', '/login');
+  });
+
+  it('builds the page title from meta', () => {
+    expect(meta()).toContainEqual({ title: 'Home | rosetta' });
   });
 });

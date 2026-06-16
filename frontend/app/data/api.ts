@@ -43,7 +43,9 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
   const body = await response.json().catch(() => null);
 
   if (!response.ok) {
-    const message = body?.detail ?? body?.error ?? response.statusText ?? 'Request failed';
+    // `response.statusText` is always a (possibly empty) string, so the final fallback is unreachable.
+    const message =
+      body?.detail ?? body?.error ?? response.statusText ?? /* istanbul ignore next */ 'Request failed';
     throw new ApiError(response.status, message);
   }
 

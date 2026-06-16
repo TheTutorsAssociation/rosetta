@@ -61,7 +61,7 @@ credentials for a token, stores it via the `safe*` storage wrappers, and redirec
 
 ```bash
 npm ci             # install (CI, Husky, Docker all use npm ci)
-npm run dev        # dev server (http://localhost:5173)
+npm run dev        # dev server (http://localhost:5001)
 npm run typecheck  # react-router typegen && tsc — run after route changes
 npm run lint       # eslint, --max-warnings 0
 npm run lint:fix   # eslint --fix

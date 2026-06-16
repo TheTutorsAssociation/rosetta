@@ -39,8 +39,8 @@ list/table/pagination/form patterns, the data hooks — see the
 
 ```bash
 npm ci                       # install from the committed package-lock.json
-cp .env.example .env         # set VITE_API_BASE_URL (defaults to the backend on http://localhost:8000)
-npm run dev                  # dev server on http://localhost:5173
+cp .env.example .env         # set VITE_API_BASE_URL (defaults to the backend on http://localhost:5000)
+npm run dev                  # dev server on http://localhost:5001
 ```
 
 Verify the toolchain end to end:

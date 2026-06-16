@@ -124,7 +124,7 @@ class _User(AppModel):
     email: str
     first_name: str
     last_name: str
-    role: UserRole = EnumField(UserRole)
+    user_type: UserType = EnumField(UserType)
 
 class User(_User, table=True):
     id: int | None = Field(default=None, primary_key=True)

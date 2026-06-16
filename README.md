@@ -49,17 +49,19 @@ come later.
 |---|---|---|
 | Stack | FastAPI · SQLModel · Celery · Postgres · Redis | React Router v7 (SSR) · React 19 · Tailwind v4 · Vite |
 | Tooling | Python 3.12 · `uv` · `ruff` · `ty` · `pytest` | TypeScript · `npm` · ESLint · Prettier · Jest · Playwright |
-| Dev server | `:8000` | `:5173` |
-| Tests | `pytest` — 100% patch coverage | Jest — 80/75/70/75 + Playwright e2e |
+| Dev server | `:5000` | `:5001` |
+| Tests | `pytest` — 100% patch + 100% overall | Jest — 100% coverage + Playwright e2e |
 
 ## Quick start
 
 ```bash
-# Backend (needs local Postgres + Redis) — http://localhost:8000
+# Backend (needs local Postgres + Redis) — http://localhost:5000
 cd backend && make install-dev && uv run alembic upgrade head && make run-dev
 
-# Frontend — http://localhost:5173 (talks to the backend on :8000)
+# Frontend — http://localhost:5001 (talks to the backend on :5000)
 cd frontend && npm ci && cp .env.example .env && npm run dev
 ```
 
-See each folder's `README.md` for the full per-stack quick start.
+See each folder's `README.md` for the full per-stack quick start. Both dev servers'
+ports are overridable via `PORT`. CI runs each half independently and uploads coverage to
+Codecov (per-half `backend` / `frontend` flags).

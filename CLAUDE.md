@@ -24,12 +24,13 @@ There is no shared toolchain — work **within one folder at a time** and follow
    **[`INTEGRATION.md`](INTEGRATION.md)** first and keep both sides consistent.
 4. **CI is path-scoped** (`.github/workflows/backend.yml`, `frontend.yml`, `frontend-e2e.yml`): a change
    under `backend/**` runs backend CI, a change under `frontend/**` runs frontend CI. Keep the gates
-   green for the half you touched (backend: 100% patch coverage; frontend: 80/75/70/75).
+   green for the half you touched (backend: 100% patch coverage; frontend: 100% coverage). Both halves
+   upload coverage to Codecov under per-half flags (`backend` / `frontend`, token `CODECOV_TOKEN`).
 
 ## What's here
 
-- **Backend:** auth (`POST /auth/login`, `GET /users/me`), role/permission checks, Celery wired for the
-  upcoming Mailchimp task, and `scripts/seed.py`. New features copy the template's patterns — see
+- **Backend:** auth (`POST /auth/login`, `GET /users/me`), `user_type` / permission checks, Celery wired
+  for the upcoming Mailchimp task, and `scripts/seed.py`. New features copy the template's patterns — see
   `backend/CLAUDE.md` and the tc-fullstack-starter template.
 - **Frontend:** React Router v7 SSR app — see `frontend/CLAUDE.md`.
 - **Both:** keep the base URL and auth aligned per `INTEGRATION.md`.

@@ -13,8 +13,8 @@ followed exactly.
 
 - **Auth** — `POST /auth/login` issues a JWT; `auth_user` validates it and sets
   `request.state.user`. `GET /users/me` returns the current user.
-- **Roles** — `UserRole` (`ADMIN` / `MEMBER`) + an `is_superadmin` flag, enforced with
-  composable `Permission` route dependencies.
+- **User types** — `UserType` (`ADMIN` / `MEMBER` / `CONTACT`, on the `user_type` field) + an
+  orthogonal `is_superadmin` flag, enforced with composable `Permission` route dependencies.
 - **Celery** — wired (worker + task registration) for the upcoming Mailchimp member sync.
 - **Core** — config, the `DBSession` access layer, Redis, Logfire + Sentry, Alembic migrations,
   and an idempotent `scripts/seed.py` superadmin seed.
@@ -73,12 +73,12 @@ make seed             # idempotent superadmin
 ### 5. Run the app and the worker
 
 ```bash
-make run-dev          # uvicorn app.main:app --reload   (http://localhost:8000)
+make run-dev          # uvicorn app.main:app --reload   (http://localhost:5000)
 make run-worker       # celery -A app.worker worker -l info
 ```
 
-- API docs (Scalar): `http://localhost:8000/scalar`
-- Healthcheck: `GET http://localhost:8000/`
+- API docs (Scalar): `http://localhost:5000/scalar`
+- Healthcheck: `GET http://localhost:5000/`
 
 ### 6. Run the checks
 
@@ -87,6 +87,9 @@ make test             # uv run pytest -n auto
 make test-cov         # with coverage, fails under 98%
 make lint             # ruff check + ruff format --check + ty check
 ```
+
+CI gates patch coverage at 100% (via `diff-cover`) and uploads coverage to Codecov under the
+`backend` flag (token `CODECOV_TOKEN`).
 
 ## Adding a feature
 

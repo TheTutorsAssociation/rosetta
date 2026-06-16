@@ -200,7 +200,7 @@ export default function LiveDashboard(): JSX.Element {
   }, []);
 
   if (error) return <ErrorState message={error} />;
-  return <DataTable rows={data} />;
+  return <YourComponent rows={data} />; // render however you like
 }
 ```
 

@@ -3,13 +3,10 @@ from enum import Enum
 from typing import Optional
 
 from pydantic import EmailStr
-from sqlmodel import Field, select
-from sqlmodel.sql._expression_select_cls import SelectOfScalar
-from starlette.requests import Request
+from sqlmodel import Field
 
 from app.common.fields import EnumField, UTCDatetimeField
 from app.common.models import AppModel
-from app.core.database import DBSession
 
 
 class UserRole(str, Enum):
@@ -60,15 +57,6 @@ class User(_User, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     email: EmailStr = Field(unique=True, index=True, description='Login identifier, unique across all users')
     hashed_password: str = Field(description='Argon2 password hash; never serialised to a response')
-
-    @classmethod
-    def request_query(cls, request: Request, db: DBSession = None) -> SelectOfScalar['User']:  # ty: ignore[invalid-method-override, invalid-parameter-default]
-        """Users the requesting user may see.
-
-        Single-tenant: everyone sees all non-deleted users. ``request`` is kept in the
-        signature for the ``AppModel`` contract even though access is not request-scoped.
-        """
-        return select(User).where(User.deleted_dt == None)  # noqa: E711
 
 
 class UserBasic(_User):

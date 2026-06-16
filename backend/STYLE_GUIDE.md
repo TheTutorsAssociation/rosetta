@@ -1,6 +1,6 @@
 # Style Guide
 
-The consolidated code-style reference for this starter. It distills the rules in `CLAUDE.md`
+The consolidated code-style reference for rosetta. It distills the rules in `CLAUDE.md`
 and `.claude/rules/code-style/`. Where this guide and a `.claude/rules/` file overlap, they
 say the same thing — this is the single page to skim before writing code.
 
@@ -16,7 +16,7 @@ say the same thing — this is the single page to skim before writing code.
 
 - **Module-level imports only.** Never import inside a function body.
   - The only exceptions are a `TYPE_CHECKING` block, or a local import strictly required to
-    break a circular import (e.g. inside `User.request_query`). Document why.
+    break a circular import. Document why.
 - **Never add `from __future__ import annotations`.** Python 3.12 supports `X | Y` unions and
   `list[int]` generics natively, and deferred annotations break SQLModel/SQLAlchemy mappers,
   FastAPI dependency resolution, and pydantic introspection at import time.
@@ -72,14 +72,14 @@ truth, and the name documents intent.
 
 ```python
 # ✅ Correct
-RATE_LIMIT_KEY_TEMPLATE = 'rate_limit:public_api:{org_id}'
-MAX_API_KEYS_PER_ORG = 10
+MAX_EMAIL_LENGTH = 254
+RATE_LIMIT_KEY_TEMPLATE = 'rate_limit:{prefix}:{ip}'
 ```
 
 ```python
 # ❌ Avoid
-key = f'rate_limit:public_api:{org_id}'   # repeated string literal
-if len(keys) >= 10:                       # bare magic number
+key = f'rate_limit:login:{ip}'   # repeated string literal
+if len(email) > 254:             # bare magic number
     ...
 ```
 
@@ -111,8 +111,8 @@ def authenticate_user(session: DBSession, email: str, password: str) -> User | N
 Split every model into three classes so secrets can't leak into responses:
 
 - `_Model(AppModel)` — non-table base with the shared columns.
-- `Model(_Model, table=True)` — adds `id`, **secret fields** (`hashed_password`,
-  `hashed_key`), relationships, and the `request_query` / `query_for_pub_api` classmethods.
+- `Model(_Model, table=True)` — adds `id`, **secret fields** (`hashed_password`), and
+  relationships.
 - `ModelBasic(_Model)` — adds `id` only (no secrets); the public-facing response shape.
 
 Set `response_model=ModelBasic` on endpoints and **return the ORM row directly** — FastAPI
@@ -176,5 +176,5 @@ essentials:
 - Use `url_path_for` for every URL — never hardcode a path.
 - Use `@patch` as a decorator, not an inline `with patch()` block. Mock only external
   boundaries, never internal business logic.
-- Add a `count_queries` test for list endpoints asserting identical query counts at
-  `page_size=1` and `page_size=200`.
+- When you add a list endpoint, add a `count_queries` test asserting identical query counts at
+  `page_size=1` and `page_size=200` (the `tc-fullstack-starter` template's no-N+1 proof).

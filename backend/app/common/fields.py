@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from enum import Enum
 
-from sqlalchemy import Column, DateTime, Enum as SQLEnum, ForeignKey, Integer, TypeDecorator
+from sqlalchemy import Column, DateTime, Enum as SQLEnum, TypeDecorator
 from sqlmodel import Field
 
 
@@ -60,29 +60,4 @@ def EnumField(enum_class: type[Enum], **kwargs):
     return Field(
         sa_column=Column(SQLEnum(enum_class, values_callable=lambda x: [e.value for e in x]), **kwargs),
         description=desc,
-    )
-
-
-def FKField(
-    foreign_key: str,
-    ondelete: str,
-    description: str | None = None,
-    nullable: bool = False,
-    primary_key: bool = False,
-    **kwargs,
-):
-    """Create an auto-indexed integer foreign-key Field.
-
-    ``ondelete`` is required (no default) to force every FK to declare its delete behaviour.
-    """
-    return Field(
-        sa_column=Column(
-            Integer,
-            ForeignKey(foreign_key, ondelete=ondelete),
-            index=True,
-            nullable=nullable,
-            primary_key=primary_key,
-            **kwargs,
-        ),
-        description=description,
     )

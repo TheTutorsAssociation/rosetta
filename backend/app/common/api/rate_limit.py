@@ -30,56 +30,11 @@ def get_client_ip(request: Request) -> str:
     return request.client.host if request.client else 'unknown'
 
 
-def rate_limit(prefix: str, ttl_seconds: int = 60):
-    """Rate limit dependency factory. 1 request per ttl_seconds per user.
-
-    Only checks whether the user is rate-limited and rejects with 429 if so. The rate limit key
-    is NOT set here — call ``confirm_rate_limit(request)`` in the endpoint after a successful
-    operation so that failed requests (e.g. a duplicate-name 409) do not consume the rate limit.
-
-    Uses ``request.state.user`` since ``auth_user`` is already applied at router level.
-    Redis key: ``rate_limit:{prefix}:{user_id}`` with TTL.
-
-    Args:
-        prefix: Key prefix to namespace different rate limits.
-        ttl_seconds: Time-to-live in seconds for the rate limit window.
-
-    Returns:
-        A FastAPI dependency callable.
-    """
-
-    def _rate_limit(request: Request) -> None:
-        user = request.state.user
-        redis_client = get_redis_client()
-        key = f'rate_limit:{prefix}:{user.id}'
-        if redis_client.exists(key):
-            raise HTTP429('Rate limit exceeded. Please try again later.')
-        request.state.rate_limit_key = key
-        request.state.rate_limit_ttl = ttl_seconds
-        request.state.rate_limit_redis = redis_client
-
-    return _rate_limit
-
-
-def confirm_rate_limit(request: Request) -> None:
-    """Set the rate limit key after a successful operation.
-
-    Call this at the end of an endpoint handler, just before returning, so that only successful
-    requests are counted against the rate limit.
-    """
-    key = getattr(request.state, 'rate_limit_key', None)
-    if key:
-        redis_client = request.state.rate_limit_redis
-        ttl = request.state.rate_limit_ttl
-        redis_client.set(key, '1', ex=ttl)
-
-
 def rate_limit_by_ip(prefix: str, window_seconds: int, max_attempts: int):
     """N attempts per IP per window. Uses INCR + idempotent EXPIRE for atomic counting.
 
-    Unlike ``rate_limit()``, every attempt is counted — there is no ``confirm_rate_limit()`` step.
-    Use this for anonymous auth endpoints where you want to throttle even failed attempts to
-    defeat credential stuffing / brute force.
+    Every attempt is counted. Use this for anonymous auth endpoints where you want to throttle
+    even failed attempts to defeat credential stuffing / brute force.
 
     The TTL is set with ``NX`` on every call (idempotent, no-op once set) so a worker crash
     between INCR and EXPIRE can't leave a TTL-less key permanently throttling that IP.

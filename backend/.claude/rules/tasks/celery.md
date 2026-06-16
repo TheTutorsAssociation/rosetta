@@ -14,11 +14,11 @@ Define tasks with an explicit, namespaced `name` using the `@celery_app.task` de
 from app.core.celery import celery_app
 from app.core.database import get_session
 
-@celery_app.task(name='example_domain.tasks.process_example_resource')
-def process_example_resource(example_resource_id: int) -> None:
+@celery_app.task(name='members.tasks.sync_member')
+def sync_member(user_id: int) -> None:
     with get_session() as db:
-        resource = db.get_or_404(ExampleResource, id=example_resource_id)
-        # ... task work ...
+        user = db.get_or_404(User, id=user_id)
+        # ... task work (e.g. push to Mailchimp) ...
 ```
 
 Key rules:
@@ -34,10 +34,10 @@ auto-commits on success and rolls back on an exception:
 ```python
 from app.core.database import get_session
 
-@celery_app.task(name='example_domain.tasks.process_example_resource')
-def process_example_resource(example_resource_id: int) -> None:
+@celery_app.task(name='members.tasks.sync_member')
+def sync_member(user_id: int) -> None:
     with get_session() as db:
-        resource = db.get_or_404(ExampleResource, id=example_resource_id)
+        user = db.get_or_404(User, id=user_id)
         ...
 ```
 
@@ -49,11 +49,11 @@ sessions.
 Enqueue with `.delay(...)` (or `.apply_async(...)`), passing primitive ids:
 
 ```python
-@router.post('', response_model=ExampleResourceBasic, status_code=201, name='create-example-resource')
-def create_resource(request: Request, body: ExampleResourceCreate, db: DBSession = Depends(get_db)):
-    resource = db.create(ExampleResource(**body.model_dump(), organization_id=request.state.user.organization_id))
-    process_example_resource.delay(resource.id)
-    return resource
+@router.post('/users', response_model=UserBasic, status_code=201, name='create-user')
+def create_user(request: Request, body: UserCreate, db: DBSession = Depends(get_db)):
+    user = db.create(User(**body.model_dump(), hashed_password=...))
+    sync_member.delay(user.id)
+    return user
 ```
 
 Avoid enqueuing high-volume tasks that will immediately no-op — guard the dispatch on whatever

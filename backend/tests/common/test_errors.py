@@ -1,4 +1,3 @@
-import app.common as common
 from app.common.api.errors import (
     HTTP400,
     HTTP401,
@@ -10,17 +9,6 @@ from app.common.api.errors import (
     HTTP429,
     HTTP500,
 )
-from app.common.api.filters import FKFilterField, FKIntMeta, ListFilter, ListOrder, OrderDirection
-from app.common.api.paginate import PaginatedResponse
-from app.common.api.rate_limit import (
-    confirm_rate_limit,
-    get_client_ip,
-    rate_limit,
-    rate_limit_by_ip,
-)
-from app.common.fields import EnumField, FKField, UTCDateTime, UTCDatetimeField
-from app.common.models import AppModel
-from app.common.utils import escape_like, inclusive_end_of_day, sanitize_for_postgres
 
 
 class TestHTTPErrors:
@@ -120,76 +108,3 @@ class TestHTTPErrors:
 
         error_with_headers = HTTP500('Internal server error', headers={'X-Custom': 'value'})
         assert error_with_headers.headers == {'X-Custom': 'value'}
-
-
-class TestCommonReExports:
-    def test_common_re_export_surface(self):
-        """Test the app.common package lazily re-exports its public surface."""
-        assert common.AppModel is AppModel
-        assert common.UTCDateTime is UTCDateTime
-        assert common.UTCDatetimeField is UTCDatetimeField
-        assert common.EnumField is EnumField
-        assert common.FKField is FKField
-        assert common.escape_like is escape_like
-        assert common.inclusive_end_of_day is inclusive_end_of_day
-        assert common.sanitize_for_postgres is sanitize_for_postgres
-        assert common.PaginatedResponse is PaginatedResponse
-        assert common.OrderDirection is OrderDirection
-        assert common.ListOrder is ListOrder
-        assert common.ListFilter is ListFilter
-        assert common.FKIntMeta is FKIntMeta
-        assert common.FKFilterField is FKFilterField
-        assert common.HTTP400 is HTTP400
-        assert common.HTTP401 is HTTP401
-        assert common.HTTP402 is HTTP402
-        assert common.HTTP403 is HTTP403
-        assert common.HTTP404 is HTTP404
-        assert common.HTTP409 is HTTP409
-        assert common.HTTP422 is HTTP422
-        assert common.HTTP429 is HTTP429
-        assert common.HTTP500 is HTTP500
-        assert common.get_client_ip is get_client_ip
-        assert common.rate_limit is rate_limit
-        assert common.confirm_rate_limit is confirm_rate_limit
-        assert common.rate_limit_by_ip is rate_limit_by_ip
-
-    def test_common_all_matches_export_map(self):
-        """Test __all__ exposes exactly the keys in the lazy export map."""
-        assert set(common.__all__) == {
-            'AppModel',
-            'UTCDateTime',
-            'UTCDatetimeField',
-            'EnumField',
-            'FKField',
-            'escape_like',
-            'inclusive_end_of_day',
-            'sanitize_for_postgres',
-            'PaginatedResponse',
-            'OrderDirection',
-            'ListOrder',
-            'ListFilter',
-            'FKIntMeta',
-            'FKFilterField',
-            'HTTP400',
-            'HTTP401',
-            'HTTP402',
-            'HTTP403',
-            'HTTP404',
-            'HTTP409',
-            'HTTP422',
-            'HTTP429',
-            'HTTP500',
-            'get_client_ip',
-            'rate_limit',
-            'confirm_rate_limit',
-            'rate_limit_by_ip',
-        }
-
-    def test_common_unknown_attribute_raises(self):
-        """Test accessing an unmapped attribute on app.common raises AttributeError."""
-        try:
-            common.DefinitelyNotAnExport
-        except AttributeError as exc:
-            assert 'DefinitelyNotAnExport' in str(exc)
-        else:
-            raise AssertionError('expected AttributeError for unknown attribute')

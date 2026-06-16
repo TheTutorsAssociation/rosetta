@@ -2,12 +2,7 @@ import pytest
 from starlette.requests import Request
 
 from app.common.api.errors import HTTP429
-from app.common.api.rate_limit import (
-    confirm_rate_limit,
-    get_client_ip,
-    rate_limit,
-    rate_limit_by_ip,
-)
+from app.common.api.rate_limit import get_client_ip, rate_limit_by_ip
 from app.core.redis import get_redis_client
 
 
@@ -23,13 +18,6 @@ def _build_request(headers: list[tuple[bytes, bytes]] | None = None, client: tup
     if client is not None:
         scope['client'] = client
     return Request(scope)
-
-
-class _FakeUser:
-    """Stand-in for request.state.user, which the rate_limit dependency reads .id from."""
-
-    def __init__(self, user_id: int):
-        self.id = user_id
 
 
 class TestGetClientIp:
@@ -64,55 +52,6 @@ class TestGetClientIp:
         request = _build_request()
 
         assert get_client_ip(request) == 'unknown'
-
-
-class TestRateLimitTwoStep:
-    """Tests for the rate_limit / confirm_rate_limit two-step per-user dependency."""
-
-    def test_first_request_passes_and_does_not_set_key(self):
-        """Test that the first check passes and leaves the key unset until confirmed."""
-        get_redis_client().delete('rate_limit:report:91001')
-        request = _build_request()
-        request.state.user = _FakeUser(91001)
-
-        rate_limit('report')(request)
-
-        assert get_redis_client().exists('rate_limit:report:91001') == 0
-        assert request.state.rate_limit_key == 'rate_limit:report:91001'
-        assert request.state.rate_limit_ttl == 60
-
-    def test_confirm_sets_the_key_and_second_request_is_blocked(self):
-        """Test that confirming sets the key so the next request within the ttl raises HTTP429."""
-        get_redis_client().delete('rate_limit:report:91002')
-        first = _build_request()
-        first.state.user = _FakeUser(91002)
-        rate_limit('report')(first)
-        confirm_rate_limit(first)
-
-        assert get_redis_client().exists('rate_limit:report:91002') == 1
-
-        second = _build_request()
-        second.state.user = _FakeUser(91002)
-        with pytest.raises(HTTP429) as exc_info:
-            rate_limit('report')(second)
-
-        assert exc_info.value.detail == 'Rate limit exceeded. Please try again later.'
-
-    def test_confirm_respects_custom_ttl(self):
-        """Test that confirm_rate_limit applies the ttl supplied to the rate_limit factory."""
-        get_redis_client().delete('rate_limit:report:91003')
-        request = _build_request()
-        request.state.user = _FakeUser(91003)
-        rate_limit('report', ttl_seconds=30)(request)
-        confirm_rate_limit(request)
-
-        assert get_redis_client().ttl('rate_limit:report:91003') == 30
-
-    def test_confirm_without_a_pending_key_is_a_noop(self):
-        """Test that confirm_rate_limit does nothing when no rate_limit check ran first."""
-        request = _build_request()
-
-        confirm_rate_limit(request)
 
 
 class TestRateLimitByIp:

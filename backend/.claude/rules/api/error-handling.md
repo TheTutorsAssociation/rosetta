@@ -38,20 +38,13 @@ Available classes: `HTTP400`, `HTTP401`, `HTTP402`, `HTTP403`, `HTTP404`, `HTTP4
 | 429 | Too Many Requests (rate limited) |
 | 500 | Internal Server Error |
 
-## Cross-Tenant Access Returns 404, Not 403
+## Use 404, Not 403, to Avoid Leaking Existence
 
-When a resource exists but belongs to another organization, raise `HTTP404`, not `HTTP403`.
-A 403 leaks the existence of the resource to a tenant that should not know about it. Scoping
-the lookup through `request_query` and raising `HTTP404` on a miss handles both the
-not-found and the cross-tenant cases with one branch.
-
-### ✅ Good
-
-```python
-resource = db.exec(ExampleResource.request_query(request, db).where(ExampleResource.id == resource_id)).first()
-if not resource:
-    raise HTTP404('Example resource not found')
-```
+When a lookup should be invisible to the caller (a resource they're not allowed to see),
+raise `HTTP404`, not `HTTP403` — a 403 leaks that the resource exists. Scope the lookup and
+raise `HTTP404` on a miss so not-found and not-allowed collapse into one branch. The
+`tc-fullstack-starter` template shows the full multi-tenant version
+(`request_query` + `HTTP404`); rosetta is single-tenant and has no cross-org resources yet.
 
 ## Error Logging
 

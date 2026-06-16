@@ -2,11 +2,14 @@
 
 The **The Tutors' Association (TTA)** membership platform — a bespoke replacement for Wild Apricot.
 
-A **FastAPI + SQLModel + Celery** backend (`backend/`) and a **React Router v7** frontend (`frontend/`),
-built on TutorCruncher's [`tc-fullstack-starter`](https://github.com/tutorcruncher/tc-fullstack-starter)
-conventions. Single-tenant (TTA only). The first version covers the **staff admin** side (members,
-payments, events, reporting) **and the member login area / hub**; the public marketing website and the
-public "Find a Tutor" directory come later.
+A **FastAPI + SQLModel + Celery** backend (`backend/`) and a **React Router v7** frontend (`frontend/`).
+Conventions and best-practices come from TutorCruncher's
+[`tc-fullstack-starter`](https://github.com/tutorcruncher/tc-fullstack-starter) template — refer to the
+template for the full pattern library (pagination, list filters, the read-only public API, the example
+domain slice, etc.). **rosetta itself carries only production code that is actually in use.** Single-tenant
+(TTA only). The first version covers the **staff admin** side (members, payments, events, reporting)
+**and the member login area / hub**; the public marketing website and the public "Find a Tutor" directory
+come later.
 
 > **Status:** scaffolding. The build is tracked in [issues](../../issues) — start at the
 > [M1 Members & onboarding epic](../../issues/4).

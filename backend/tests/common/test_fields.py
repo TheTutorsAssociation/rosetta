@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import text
 from sqlmodel import Field, SQLModel, select
 
-from app.common.fields import EnumField, FKField, UTCDatetimeField
+from app.common.fields import EnumField, UTCDatetimeField
 from app.core.database import DBSession
 
 
@@ -37,23 +37,6 @@ class MockEnumModel(SQLModel, table=True):
     colour: FieldsColour = EnumField(FieldsColour)
 
 
-class MockFKParent(SQLModel, table=True):
-    """Parent table targeted by ``MockFKChild``'s foreign key."""
-
-    __tablename__ = 'test_fields_fk_parent'
-
-    id: int = Field(default=None, primary_key=True)
-
-
-class MockFKChild(SQLModel, table=True):
-    """Child model exercising ``FKField`` indexing and ``ondelete`` behaviour."""
-
-    __tablename__ = 'test_fields_fk_child'
-
-    id: int = Field(default=None, primary_key=True)
-    parent_id: int = FKField('test_fields_fk_parent.id', ondelete='CASCADE')
-
-
 @pytest.fixture(name='fields_tables')
 def fields_tables_fixture(db: DBSession):
     """Ensure the test-only tables exist on this worker's database before use.
@@ -62,7 +45,7 @@ def fields_tables_fixture(db: DBSession):
     ``checkfirst``) regardless of whether the session-scoped ``create_all`` saw the model.
     """
     bind = db.get_bind()
-    for model in (MockFKParent, MockFKChild, MockDatetimeModel, MockEnumModel):
+    for model in (MockDatetimeModel, MockEnumModel):
         model.__table__.create(bind, checkfirst=True)
     return db
 
@@ -178,31 +161,3 @@ class TestEnumField:
 
         assert "colour = 'green'" in compiled
         assert 'GREEN' not in compiled
-
-
-class TestFKField:
-    """Test that ``FKField`` produces an indexed column with the requested ``ondelete``."""
-
-    def test_fk_field_is_indexed(self):
-        """Test that the foreign-key column is auto-indexed."""
-        parent_column = MockFKChild.__table__.columns['parent_id']
-        assert parent_column.index is True
-
-    def test_fk_field_ondelete(self):
-        """Test that the foreign key carries the requested ondelete behaviour."""
-        parent_column = MockFKChild.__table__.columns['parent_id']
-        foreign_key = next(iter(parent_column.foreign_keys))
-        assert foreign_key.ondelete == 'CASCADE'
-        assert foreign_key.target_fullname == 'test_fields_fk_parent.id'
-
-    def test_fk_field_cascade_deletes_children(self, fields_tables: DBSession):
-        """Test that deleting a parent cascades to its FKField children in the database."""
-        parent = fields_tables.create(MockFKParent())
-        child = fields_tables.create(MockFKChild(parent_id=parent.id))
-        child_id = child.id
-
-        fields_tables.exec(text(f'DELETE FROM test_fields_fk_parent WHERE id = {parent.id}'))  # noqa: S608
-        fields_tables.commit()
-
-        remaining = fields_tables.exec(select(MockFKChild).where(MockFKChild.id == child_id)).one_or_none()
-        assert remaining is None

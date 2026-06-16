@@ -1,43 +1,50 @@
 # PR Review Patterns
 
-These patterns were **mined from 900+ real PR review comments** on the codebase this starter
-was generalized from — they are what reviewers actually pick up on. Treat this as a
-**pre-PR self-review checklist**: before you open a PR, walk the relevant sections and
-confirm your diff complies. Each item gives the imperative rule, the *why*, how often it
-came up in review (`frequency`), and whether it is already written down elsewhere
-(`[documented]`) or is a pattern reviewers enforce that wasn't previously captured (`[new]`).
+These patterns were **mined from 900+ real PR review comments** on the codebase rosetta's
+template (`tc-fullstack-starter`) was generalized from — they are what reviewers actually pick
+up on. Treat this as a **pre-PR self-review checklist**: before you open a PR, walk the
+relevant sections and confirm your diff complies. Each item gives the imperative rule, the
+*why*, how often it came up in review (`frequency`), and whether it is already written down
+elsewhere (`[documented]`) or is a pattern reviewers enforce that wasn't previously captured
+(`[new]`).
 
 `[new]` items are the ones most likely to bite you, because they aren't yet baked into the
 other docs — read those especially carefully.
 
+> **Some items below describe patterns rosetta doesn't carry yet** (list/search queries,
+> multi-tenancy / `request_query`, the read-only public API, `PaginatedResponse`,
+> `escape_like`). They apply the moment you add that feature — pull the pattern from the
+> [`tc-fullstack-starter`](https://github.com/tutorcruncher/tc-fullstack-starter) template.
+
 ---
 
-## 1. Tenancy & queries
+## 1. Queries (apply once list/search/multi-tenant endpoints exist)
 
-- [ ] **Filter every list/detail query through `Model.request_query(request, db)` (internal)
-  or `Model.query_for_pub_api(organization_id)` (public); never replicate org/role filters
-  inline.** `[documented]` · frequency: high
-  *Why:* `request_query` bakes in org-scoping, role, and billing checks. Duplicating filters
-  inline risks permission/tenant leaks and drifts from the central policy.
+- [ ] **Filter every list/detail query through a centralized scope helper (the template's
+  `Model.request_query(request, db)` / `Model.query_for_pub_api(organization_id)`); never
+  replicate access filters inline.** `[documented]` · frequency: high
+  *Why:* a central scope bakes in role/tenant/billing checks. Duplicating filters inline risks
+  permission leaks and drifts from the central policy.
 
 - [ ] **Use `escape_like()` on all user input in `LIKE`/`ilike` queries.** `[documented]` ·
   frequency: high
   *Why:* unescaped `%` and `_` act as wildcards, leaking unintended rows.
 
-- [ ] **Redact internal/sensitive fields (internal ids, `hashed_*`, `is_demo`, deleted
-  flags, prompts, agent metadata) from every public response and from anything sent to a
-  third party; build dedicated public schemas by explicit construction, never
-  `model_validate` on the ORM object.** `[documented]` · frequency: medium
-  *Why:* the public API and external integrations must not leak internal identifiers or
-  system internals; explicit construction prevents accidental passthrough.
+- [ ] **Redact internal/sensitive fields (internal ids, `hashed_*`, deleted flags) from every
+  external response and from anything sent to a third party; build dedicated schemas by
+  explicit construction, never `model_validate` on the ORM object.** `[documented]` ·
+  frequency: medium
+  *Why:* external integrations must not leak internal identifiers; explicit construction
+  prevents accidental passthrough.
 
 ## 2. Performance
 
-- [ ] **Use `PaginatedResponse` with two-step paginate-then-fetch: cheap `LIMIT`/`OFFSET`
-  page query first, then `selectinload`/aggregations scoped to `WHERE id IN (page_ids)`.
-  Never fetch all then paginate in memory.** `[documented]` · frequency: high
+- [ ] **For list endpoints, use the template's `PaginatedResponse` two-step paginate-then-fetch:
+  cheap `LIMIT`/`OFFSET` page query first, then `selectinload`/aggregations scoped to
+  `WHERE id IN (page_ids)`. Never fetch all then paginate in memory.** `[documented]` ·
+  frequency: high
   *Why:* keeps per-page latency constant regardless of table size and prevents full-table
-  joins. The dominant performance convention in the codebase.
+  joins.
 
 - [ ] **Preserve `selectinload`/`joinedload` options whenever a query is rebuilt via
   `.subquery()` or a fresh `select()`; accessing relationships in a loop without eager

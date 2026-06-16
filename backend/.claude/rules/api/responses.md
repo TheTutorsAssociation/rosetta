@@ -55,7 +55,7 @@ def get_current_user(request: Request) -> UserBasic:
 ### ❌ Bad - hand-mapping fields into a dict
 
 ```python
-return {'id': user.id, 'email': user.email, 'role': user.role}
+return {'id': user.id, 'email': user.email, 'user_type': user.user_type}
 ```
 
 ## List endpoints (template pattern)

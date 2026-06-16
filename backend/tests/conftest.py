@@ -258,10 +258,10 @@ def client_fixture(db: database.DBSession) -> Generator[TestClient, None, None]:
 
 
 def _create_authenticated_client_for_user(client: TestClient, user: User) -> AuthenticatedTestClient:
-    """Mint a web JWT carrying the ``(id, email, role)`` triple and wrap it in a client."""
+    """Mint a web JWT carrying the ``(id, email, user_type)`` triple and wrap it in a client."""
     assert user.id is not None
     expire = datetime.now(UTC) + timedelta(minutes=settings.access_token_expire_minutes)
-    to_encode = {'exp': expire, 'email': user.email, 'role': user.role.value, 'id': user.id}
+    to_encode = {'exp': expire, 'email': user.email, 'user_type': user.user_type.value, 'id': user.id}
     token = jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
     return AuthenticatedTestClient(client.app, token, user)
 

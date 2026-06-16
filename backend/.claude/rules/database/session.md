@@ -14,7 +14,7 @@ Use the `DBSession` helper methods (in `app/core/database.py`) for common databa
 Add, commit, and refresh an instance in one call:
 
 ```python
-user = db.create(User(last_name='Smith', email='alice@example.com', role=UserRole.MEMBER, hashed_password=...))
+user = db.create(User(last_name='Smith', email='alice@example.com', user_type=UserType.MEMBER, hashed_password=...))
 # user.id is now set
 ```
 
@@ -44,7 +44,7 @@ Get an existing instance or create a new one (like Django's `get_or_create`):
 user, created = db.get_or_create(
     User,
     email='admin@example.com',
-    defaults={'last_name': 'Admin', 'role': UserRole.ADMIN, 'is_superadmin': True},
+    defaults={'last_name': 'Admin', 'user_type': UserType.ADMIN, 'is_superadmin': True},
 )
 # defaults are only used when creating, not when getting
 ```
@@ -57,7 +57,7 @@ Create a new instance or update an existing one (like Django's `update_or_create
 user, created = db.create_or_update(
     User,
     email='admin@example.com',
-    defaults={'last_name': 'Admin', 'role': UserRole.ADMIN},
+    defaults={'last_name': 'Admin', 'user_type': UserType.ADMIN},
 )
 # defaults are applied on both create AND update. This commits — do NOT commit again.
 ```

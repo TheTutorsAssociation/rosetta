@@ -85,6 +85,6 @@ def create_access_token_for(user: User) -> str:
     """Issue a web access-token JWT for ``user`` using the configured expiry."""
     assert user.id is not None
     return create_access_token(
-        data={'email': user.email, 'role': user.role.value, 'id': user.id},
+        data={'email': user.email, 'user_type': user.user_type.value, 'id': user.id},
         expires_delta=timedelta(minutes=settings.access_token_expire_minutes),
     )

@@ -5,7 +5,7 @@ from jwt.exceptions import PyJWTError
 from pydantic import BaseModel, ConfigDict, ValidationError
 from sqlmodel import select
 
-from app.auth.models import User, UserRole
+from app.auth.models import User, UserType
 from app.common.api.errors import HTTP401
 from app.core.config import settings
 from app.core.database import DBSession, get_db
@@ -15,10 +15,12 @@ class TokenData(BaseModel):
     """The identity triple carried in a web access token."""
 
     email: str
-    role: UserRole
+    user_type: UserType
     id: int
 
-    model_config = ConfigDict(json_schema_extra={'example': {'email': 'user@example.com', 'role': 'member', 'id': 123}})
+    model_config = ConfigDict(
+        json_schema_extra={'example': {'email': 'user@example.com', 'user_type': 'member', 'id': 123}}
+    )
 
 
 class CustomHTTPBearer(HTTPBearer):
@@ -48,8 +50,8 @@ async def auth_user(
 ) -> User:
     """Authenticate a web request from its Bearer JWT and set ``request.state.user``.
 
-    Decodes the token, then validates the full identity triple ``(id, email, role)`` against
-    the database row so a stale or tampered token (e.g. one issued before a role change) is
+    Decodes the token, then validates the full identity triple ``(id, email, user_type)`` against
+    the database row so a stale or tampered token (e.g. one issued before a user-type change) is
     rejected. PKCE / mobile token revocation are intentionally out of scope for the starter —
     add an ``aud`` claim and a revocation timestamp if you need them.
 
@@ -66,7 +68,7 @@ async def auth_user(
         select(User).where(
             User.id == token_data.id,
             User.email == token_data.email,
-            User.role == token_data.role,
+            User.user_type == token_data.user_type,
         )
     ).one_or_none()
     if user is None:

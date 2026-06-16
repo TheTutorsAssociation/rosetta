@@ -33,7 +33,7 @@ def upgrade() -> None:
         sa.Column('first_name', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
         sa.Column('last_name', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
         sa.Column('email', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column('role', sa.Enum('admin', 'member', name='userrole'), nullable=True),
+        sa.Column('user_type', sa.Enum('admin', 'member', 'contact', name='usertype'), nullable=True),
         sa.Column('is_superadmin', sa.Boolean(), nullable=False),
         sa.Column('created_dt', app.common.fields.UTCDateTime(timezone=True), nullable=True),
         sa.Column('updated_dt', app.common.fields.UTCDateTime(timezone=True), nullable=True),
@@ -52,4 +52,4 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_user_created_dt'), table_name='user')
     op.drop_table('user')
 
-    sa.Enum(name='userrole').drop(op.get_bind(), checkfirst=True)
+    sa.Enum(name='usertype').drop(op.get_bind(), checkfirst=True)

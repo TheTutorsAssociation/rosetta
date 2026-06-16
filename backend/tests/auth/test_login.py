@@ -8,12 +8,12 @@ from fastapi.testclient import TestClient
 
 from app.auth.jwt import CustomHTTPBearer
 from app.auth.login import create_access_token, get_password_hash
-from app.auth.models import UserRole
-from app.auth.permissions import Permission, PermissionCheck, role_check
+from app.auth.models import UserType
+from app.auth.permissions import Permission, PermissionCheck, user_type_check
 from app.core.config import settings
 from app.core.database import DBSession
 from app.main import app
-from tests.auth.factories import AdminFactory, MemberFactory
+from tests.auth.factories import AdminFactory, ContactFactory, MemberFactory
 from tests.conftest import AuthenticatedTestClient, _create_authenticated_client_for_user
 
 perm_test_router = APIRouter(prefix='/test-permissions', tags=['test-permissions'])
@@ -60,6 +60,18 @@ class TestLogin:
         r = client.post(
             client.app.url_path_for('login'),
             json={'email': 'admin@test.com', 'password': 'testing-password'},
+        )
+        assert r.status_code == 200
+        data = r.json()
+        assert data['token_type'] == 'bearer'
+        assert data['access_token']
+
+    def test_contact_can_log_in(self, client: TestClient, db: DBSession):
+        """A CONTACT user (non-member who can still log in) authenticates successfully."""
+        ContactFactory.create_with_db(db, email='contact@test.com')
+        r = client.post(
+            client.app.url_path_for('login'),
+            json={'email': 'contact@test.com', 'password': 'testing-password'},
         )
         assert r.status_code == 200
         data = r.json()
@@ -158,14 +170,21 @@ class TestPermissionCombinator:
         combined = Permission.is_admin | Permission.is_member | Permission.is_superadmin
         assert combined.name == 'Admin or Member or Superadmin'
 
-    def test_role_check_builds_named_permission_for_role(self):
-        """role_check returns a PermissionCheck named after the role that passes for that role."""
-        check = role_check(UserRole.ADMIN)
+    def test_user_type_check_builds_named_permission_for_user_type(self):
+        """user_type_check returns a PermissionCheck named after the user type that passes for it."""
+        check = user_type_check(UserType.ADMIN)
         assert isinstance(check, PermissionCheck)
         assert check.name == 'Admin'
-        assert check.check_func(SimpleNamespace(role=UserRole.ADMIN, is_superadmin=False)) is True
-        assert check.check_func(SimpleNamespace(role=UserRole.MEMBER, is_superadmin=False)) is False
-        assert check.check_func(SimpleNamespace(role=UserRole.MEMBER, is_superadmin=True)) is True
+        assert check.check_func(SimpleNamespace(user_type=UserType.ADMIN, is_superadmin=False)) is True
+        assert check.check_func(SimpleNamespace(user_type=UserType.MEMBER, is_superadmin=False)) is False
+        assert check.check_func(SimpleNamespace(user_type=UserType.MEMBER, is_superadmin=True)) is True
+
+    def test_user_type_check_passes_for_contact_and_fails_for_member(self):
+        """user_type_check(CONTACT) passes for a contact and fails for a member."""
+        check = user_type_check(UserType.CONTACT)
+        assert check.name == 'Contact'
+        assert check.check_func(SimpleNamespace(user_type=UserType.CONTACT, is_superadmin=False)) is True
+        assert check.check_func(SimpleNamespace(user_type=UserType.MEMBER, is_superadmin=False)) is False
 
 
 class TestRoleGating:
@@ -286,11 +305,11 @@ class TestCustomHTTPBearer:
 
 
 class TestTokenIdentity:
-    def test_stale_role_in_token_is_rejected(self, client: TestClient, db: DBSession):
-        """A token whose role no longer matches the DB user is rejected (401)."""
+    def test_stale_user_type_in_token_is_rejected(self, client: TestClient, db: DBSession):
+        """A token whose user type no longer matches the DB user is rejected (401)."""
         member = MemberFactory.create_with_db(db, email='member2@test.com')
         member_client = _create_authenticated_client_for_user(client, member)
-        member.role = UserRole.ADMIN
+        member.user_type = UserType.ADMIN
         db.add(member)
         db.commit()
 

@@ -8,7 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import select
 
 from app.auth.login import get_password_hash
-from app.auth.models import User, UserRole
+from app.auth.models import User, UserType
 from app.common.api.errors import HTTP404
 from app.core.database import DBSession, create_db_and_tables, get_db, get_session
 from tests.auth.factories import UserFactory
@@ -113,7 +113,7 @@ class TestDBSessionCreate:
                 first_name='Test',
                 last_name='User',
                 email='create@example.com',
-                role=UserRole.MEMBER,
+                user_type=UserType.MEMBER,
                 hashed_password=get_password_hash('password123'),
             )
         )
@@ -125,13 +125,13 @@ class TestDBSessionCreate:
             'first_name': found.first_name,
             'last_name': found.last_name,
             'email': found.email,
-            'role': found.role,
+            'user_type': found.user_type,
         } == {
             'id': user.id,
             'first_name': 'Test',
             'last_name': 'User',
             'email': 'create@example.com',
-            'role': UserRole.MEMBER,
+            'user_type': UserType.MEMBER,
         }
 
 
@@ -200,7 +200,7 @@ class TestDBSessionGetOrCreate:
             email='brand-new@example.com',
             defaults={
                 'last_name': 'New',
-                'role': UserRole.MEMBER,
+                'user_type': UserType.MEMBER,
                 'is_superadmin': True,
                 'hashed_password': get_password_hash('password123'),
             },
@@ -248,7 +248,7 @@ class TestDBSessionGetOrCreate:
                 email='race@example.com',
                 defaults={
                     'last_name': 'Racer',
-                    'role': UserRole.MEMBER,
+                    'user_type': UserType.MEMBER,
                     'hashed_password': get_password_hash('password123'),
                 },
             )
@@ -268,7 +268,7 @@ class TestDBSessionCreateOrUpdate:
             email='fresh@example.com',
             defaults={
                 'last_name': 'Fresh',
-                'role': UserRole.MEMBER,
+                'user_type': UserType.MEMBER,
                 'is_superadmin': True,
                 'hashed_password': get_password_hash('password123'),
             },
@@ -324,7 +324,7 @@ class TestDBSessionCreateOrUpdate:
                 email='race-update@example.com',
                 defaults={
                     'last_name': 'UpdatedRacer',
-                    'role': UserRole.MEMBER,
+                    'user_type': UserType.MEMBER,
                     'hashed_password': get_password_hash('password123'),
                 },
             )

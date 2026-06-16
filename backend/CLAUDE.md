@@ -15,7 +15,7 @@ generalize the template's pattern for that layer rather than inventing a new one
 - **Auth** — `POST /auth/login` (`app/auth/api/login.py`) issues a JWT; `auth_user`
   (`app/auth/jwt.py`) validates it and sets `request.state.user`. `GET /users/me`
   (`app/auth/api/users.py`) returns `request.state.user` directly.
-- **Roles & permissions** — `UserRole` (`ADMIN` / `MEMBER`) plus an `is_superadmin` flag, and
+- **User types & permissions** — `UserType` (`ADMIN` / `MEMBER` / `CONTACT`) plus an `is_superadmin` flag, and
   composable `Permission` dependencies (`is_admin` / `is_member` / `is_superadmin` / `everyone`
   / `anonymous`) in `app/auth/permissions.py`. Apply them as route/router `dependencies=[...]`,
   never as handler-body checks.

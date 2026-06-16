@@ -9,16 +9,18 @@ from app.common.fields import EnumField, UTCDatetimeField
 from app.common.models import AppModel
 
 
-class UserRole(str, Enum):
-    """A user's role on the platform.
+class UserType(str, Enum):
+    """The kind of login user on the platform.
 
-    ``ADMIN`` is TTA staff who manage the platform; ``MEMBER`` is a member-hub user. Elevated
-    access is the separate ``is_superadmin`` flag, not a role — so a superadmin can also carry a
-    normal role. Extend this enum (and ``app.auth.permissions``) to add finer-grained roles.
+    Three user types: ``ADMIN`` is TTA staff who manage the platform; ``MEMBER`` is a member-hub
+    user; ``CONTACT`` is a non-member who can still log in. Elevated access is the separate
+    ``is_superadmin`` flag, not a user type — so a superadmin can also carry a normal user type.
+    Extend this enum (and ``app.auth.permissions``) to add finer-grained user types.
     """
 
     ADMIN = 'admin'
     MEMBER = 'member'
+    CONTACT = 'contact'
 
 
 class _User(AppModel):
@@ -31,8 +33,8 @@ class _User(AppModel):
     first_name: Optional[str] = None
     last_name: str
     email: EmailStr = Field(description='Login identifier, unique across all users')
-    role: UserRole = EnumField(UserRole)
-    is_superadmin: bool = Field(default=False, description='Elevated access that bypasses role checks')
+    user_type: UserType = EnumField(UserType)
+    is_superadmin: bool = Field(default=False, description='Elevated access that bypasses user-type checks')
     created_dt: datetime = UTCDatetimeField(now_add=True, index=True)
     updated_dt: Optional[datetime] = UTCDatetimeField(auto_now=True)
     deleted_dt: Optional[datetime] = UTCDatetimeField(
@@ -47,8 +49,8 @@ class _User(AppModel):
 
     @property
     def is_admin(self) -> bool:
-        """Whether the user has the ADMIN role (does not account for superadmin)."""
-        return self.role == UserRole.ADMIN
+        """Whether the user is of the ADMIN type (does not account for superadmin)."""
+        return self.user_type == UserType.ADMIN
 
 
 class User(_User, table=True):

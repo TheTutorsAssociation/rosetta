@@ -18,8 +18,8 @@ Every demo is an animated flow. Record a single `.webm` at 1440×900, then conve
 
 The journey drives the **real** frontend, which logs in against the **real** backend, so both must be up. **Never start the servers yourself** — tell the user to.
 
-1. **Frontend up on :5173.** `curl -s -o /dev/null -w '%{http_code}' http://localhost:5173` → expect `200`.
-2. **Backend up + healthy on :8000.** `curl -s http://localhost:8000/` → expect `{"status":"healthy"}`.
+1. **Frontend up on :5001.** `curl -s -o /dev/null -w '%{http_code}' http://localhost:5001` → expect `200`.
+2. **Backend up + healthy on :5000.** `curl -s http://localhost:5000/` → expect `{"status":"healthy"}`.
 3. If either is down → **STOP** and tell the user to start the stack:
    - Postgres + Redis running (the backend needs both).
    - Backend: `cd ~/repos/rosetta/backend && make run-dev` (and `make seed` once, to create the dev admin).
@@ -78,7 +78,7 @@ The journey drives the **real** frontend, which logs in against the **real** bac
 
 ## Journey contract
 
-Every journey imports the shared driver at `~/repos/pr-demos/_lib/rosetta-driver.mjs`. It handles browser/context + video, the visible cursor, login as the seeded dev admin (`admin@rosetta.local` / `rosetta-dev-password` — override with `ADMIN_EMAIL` / `ADMIN_PASSWORD`), and cursor-moving navigation/click helpers.
+Every journey imports the shared driver at `~/repos/pr-demos/_lib/rosetta-driver.mjs`. It handles browser/context + video, the visible cursor, login as the seeded dev admin (`admin@example.com` / `rosetta-dev-password` — override with `ADMIN_EMAIL` / `ADMIN_PASSWORD`), and cursor-moving navigation/click helpers.
 
 Helpers (import from `'../_lib/rosetta-driver.mjs'`):
 

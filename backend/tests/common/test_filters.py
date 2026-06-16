@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import List, Optional
@@ -7,13 +7,11 @@ import pytest
 from pydantic import Field as PydanticField
 from sqlmodel import select
 
+from app.auth.models import User, UserRole
 from app.common.api.errors import HTTP422
 from app.common.api.filters import FKFilterField, FKIntMeta, ListFilter, ListOrder, OrderDirection
-from app.example_domain.api.example_resources import ExampleResourceListFilter, ExampleResourceListOrder
-from app.example_domain.models.example_resource import ExampleResource, ResourceStatus
-from app.organization.models.organization import Organization
-from tests.example_domain.factories import ExampleResourceFactory
-from tests.organization.factories import AdminFactory, OrganizationFactory
+from app.common.utils import escape_like, inclusive_end_of_day
+from tests.auth.factories import AdminFactory, UserFactory
 
 
 def _request_for(user):
@@ -22,12 +20,21 @@ def _request_for(user):
 
 
 @dataclass
+class _UserListOrder(ListOrder):
+    """Ordering for the user list, sorted by name then created_dt (ascending by default)."""
+
+    model = User
+    fields = ['last_name', 'created_dt']
+    order_direction: OrderDirection = field(default=OrderDirection.ASC)
+
+
+@dataclass
 class _TiebreakerOrder(ListOrder):
     """Ordering with a non-id tiebreaker field to exercise the secondary-sort branch."""
 
-    model = ExampleResource
-    fields = ['status', 'name']
-    tiebreaker_fields = ['name']
+    model = User
+    fields = ['role', 'last_name']
+    tiebreaker_fields = ['last_name']
     order_direction = OrderDirection.ASC
 
 
@@ -35,8 +42,8 @@ class _TiebreakerOrder(ListOrder):
 class _IdTiebreakerOrder(ListOrder):
     """Ordering whose declared tiebreaker is ``id`` so no extra id tiebreaker is appended."""
 
-    model = ExampleResource
-    fields = ['name']
+    model = User
+    fields = ['last_name']
     tiebreaker_fields = ['id']
 
 
@@ -44,14 +51,35 @@ class _IdTiebreakerOrder(ListOrder):
 class _IdPrimaryOrder(ListOrder):
     """Ordering whose primary sort is ``id`` so no extra id tiebreaker is appended."""
 
-    model = ExampleResource
-    fields = ['id', 'name']
+    model = User
+    fields = ['id', 'last_name']
+
+
+class _UserListFilter(ListFilter):
+    """Query filters for the user list endpoint, exercising search, date range and FK branches."""
+
+    search: str | None = None
+    created_from: datetime | None = None
+    created_to: datetime | None = None
+    user_id: FKFilterField(User, name_field='email') = None  # ty: ignore[invalid-type-form]
+
+    def apply(self, query, user):
+        """Apply the configured filters to ``query``."""
+        if self.search:
+            query = query.where(User.last_name.ilike(f'%{escape_like(self.search)}%'))
+        if self.created_from:
+            query = query.where(User.created_dt >= self.created_from)
+        if self.created_to:
+            query = query.where(User.created_dt <= inclusive_end_of_day(self.created_to))
+        if self.user_id:
+            query = query.where(User.id == self.user_id)
+        return query
 
 
 class _EnumAndListFilter(ListFilter):
     """A filter exposing an Enum and a list field to exercise both ``get_options`` branches."""
 
-    status: Optional[ResourceStatus] = PydanticField(default=None)
+    role: Optional[UserRole] = PydanticField(default=None)
     tags: Optional[List[str]] = PydanticField(default=None)
     name: str = PydanticField()
 
@@ -71,105 +99,90 @@ class TestOrderDirection:
 
 
 class TestListOrderApply:
-    """Tests for ListOrder.apply ordering behaviour against seeded resources."""
+    """Tests for ListOrder.apply ordering behaviour against seeded users."""
 
     def test_default_order_uses_first_field_and_appends_id_tiebreaker(self, db):
-        """With no order_by the first declared field is used, descending, with an id tiebreaker."""
-        organization = OrganizationFactory.create_with_db(db, name='Org')
-        first = ExampleResourceFactory.create_with_db(db, organization=organization, name='Alpha')
-        second = ExampleResourceFactory.create_with_db(db, organization=organization, name='Zeta')
+        """With no order_by the first declared field is used, with an id tiebreaker."""
+        first = UserFactory.create_with_db(db, last_name='Alpha')
+        second = UserFactory.create_with_db(db, last_name='Zeta')
 
-        query = ExampleResourceListOrder().apply(select(ExampleResource))
+        query = _UserListOrder().apply(select(User))
         results = db.exec(query).all()
 
-        assert [r.id for r in results] == [second.id, first.id]
+        assert [u.id for u in results] == [first.id, second.id]
 
     def test_explicit_order_by_ascending(self, db):
         """An explicit order_by with ASC direction orders by that column ascending."""
-        organization = OrganizationFactory.create_with_db(db, name='Org')
-        alpha = ExampleResourceFactory.create_with_db(db, organization=organization, name='Alpha')
-        zeta = ExampleResourceFactory.create_with_db(db, organization=organization, name='Zeta')
+        alpha = UserFactory.create_with_db(db, last_name='Alpha')
+        zeta = UserFactory.create_with_db(db, last_name='Zeta')
 
-        ordering = ExampleResourceListOrder(order_by='name', order_direction=OrderDirection.ASC)
-        results = db.exec(ordering.apply(select(ExampleResource))).all()
+        ordering = _UserListOrder(order_by='last_name', order_direction=OrderDirection.ASC)
+        results = db.exec(ordering.apply(select(User))).all()
 
-        assert [r.id for r in results] == [alpha.id, zeta.id]
+        assert [u.id for u in results] == [alpha.id, zeta.id]
 
     def test_order_by_accepts_enum_member(self, db):
         """order_by may be passed as the OrderBy enum member directly."""
-        organization = OrganizationFactory.create_with_db(db, name='Org')
-        alpha = ExampleResourceFactory.create_with_db(db, organization=organization, name='Alpha')
-        zeta = ExampleResourceFactory.create_with_db(db, organization=organization, name='Zeta')
+        alpha = UserFactory.create_with_db(db, last_name='Alpha')
+        zeta = UserFactory.create_with_db(db, last_name='Zeta')
 
-        ordering = ExampleResourceListOrder(
-            order_by=ExampleResourceListOrder.OrderBy.NAME, order_direction=OrderDirection.ASC
-        )
-        results = db.exec(ordering.apply(select(ExampleResource))).all()
+        ordering = _UserListOrder(order_by=_UserListOrder.OrderBy.LAST_NAME, order_direction=OrderDirection.ASC)
+        results = db.exec(ordering.apply(select(User))).all()
 
-        assert [r.id for r in results] == [alpha.id, zeta.id]
+        assert [u.id for u in results] == [alpha.id, zeta.id]
 
     def test_apply_accepts_unused_user_argument(self, db):
         """apply accepts a user argument for parity with overrides and ignores it."""
-        organization = OrganizationFactory.create_with_db(db, name='Org')
-        resource = ExampleResourceFactory.create_with_db(db, organization=organization, name='Solo')
-        user = AdminFactory.create_with_db(db, organization=organization)
+        user = UserFactory.create_with_db(db, last_name='Solo')
 
-        results = db.exec(ExampleResourceListOrder().apply(select(ExampleResource), user)).all()
+        results = db.exec(_UserListOrder().apply(select(User), user)).all()
 
-        assert [r.id for r in results] == [resource.id]
+        assert [u.id for u in results] == [user.id]
 
     def test_tiebreaker_field_breaks_ties_within_primary_sort(self, db):
         """A declared tiebreaker field orders rows sharing the primary sort value ascending."""
-        organization = OrganizationFactory.create_with_db(db, name='Org')
-        zeta = ExampleResourceFactory.create_with_db(
-            db, organization=organization, name='Zeta', status=ResourceStatus.DRAFT
-        )
-        alpha = ExampleResourceFactory.create_with_db(
-            db, organization=organization, name='Alpha', status=ResourceStatus.DRAFT
-        )
+        zeta = UserFactory.create_with_db(db, last_name='Zeta', role=UserRole.MEMBER)
+        alpha = UserFactory.create_with_db(db, last_name='Alpha', role=UserRole.MEMBER)
 
-        results = db.exec(_TiebreakerOrder().apply(select(ExampleResource))).all()
+        results = db.exec(_TiebreakerOrder().apply(select(User))).all()
 
-        assert [r.id for r in results] == [alpha.id, zeta.id]
+        assert [u.id for u in results] == [alpha.id, zeta.id]
 
     def test_tiebreaker_skipped_when_equal_to_primary_order_field(self, db):
         """When the primary order_by equals a tiebreaker field, that tiebreaker is not duplicated."""
-        organization = OrganizationFactory.create_with_db(db, name='Org')
-        alpha = ExampleResourceFactory.create_with_db(db, organization=organization, name='Alpha')
-        zeta = ExampleResourceFactory.create_with_db(db, organization=organization, name='Zeta')
+        alpha = UserFactory.create_with_db(db, last_name='Alpha')
+        zeta = UserFactory.create_with_db(db, last_name='Zeta')
 
-        ordering = _TiebreakerOrder(order_by='name', order_direction=OrderDirection.ASC)
-        results = db.exec(ordering.apply(select(ExampleResource))).all()
+        ordering = _TiebreakerOrder(order_by='last_name', order_direction=OrderDirection.ASC)
+        results = db.exec(ordering.apply(select(User))).all()
 
-        assert [r.id for r in results] == [alpha.id, zeta.id]
+        assert [u.id for u in results] == [alpha.id, zeta.id]
 
     def test_no_id_tiebreaker_appended_when_id_in_tiebreaker_fields(self, db):
         """An id tiebreaker declared explicitly is not appended a second time."""
-        organization = OrganizationFactory.create_with_db(db, name='Org')
-        first = ExampleResourceFactory.create_with_db(db, organization=organization, name='Alpha')
-        second = ExampleResourceFactory.create_with_db(db, organization=organization, name='Alpha')
+        first = UserFactory.create_with_db(db, last_name='Alpha')
+        second = UserFactory.create_with_db(db, last_name='Alpha')
 
-        results = db.exec(_IdTiebreakerOrder().apply(select(ExampleResource))).all()
+        results = db.exec(_IdTiebreakerOrder().apply(select(User))).all()
 
-        assert [r.id for r in results] == [first.id, second.id]
+        assert [u.id for u in results] == [first.id, second.id]
 
     def test_no_id_tiebreaker_appended_when_primary_sort_is_id(self, db):
         """When the primary sort column is id itself, no extra id tiebreaker is appended."""
-        organization = OrganizationFactory.create_with_db(db, name='Org')
-        first = ExampleResourceFactory.create_with_db(db, organization=organization, name='Alpha')
-        second = ExampleResourceFactory.create_with_db(db, organization=organization, name='Zeta')
+        first = UserFactory.create_with_db(db, last_name='Alpha')
+        second = UserFactory.create_with_db(db, last_name='Zeta')
 
         ordering = _IdPrimaryOrder(order_by='id', order_direction=OrderDirection.DESC)
-        results = db.exec(ordering.apply(select(ExampleResource))).all()
+        results = db.exec(ordering.apply(select(User))).all()
 
-        assert [r.id for r in results] == [second.id, first.id]
+        assert [u.id for u in results] == [second.id, first.id]
 
     def test_invalid_order_by_raises_http422(self):
         """An unknown order_by string raises HTTP422 listing the valid fields."""
         with pytest.raises(HTTP422) as exc:
-            ExampleResourceListOrder(order_by='not_a_field')
+            _UserListOrder(order_by='not_a_field')
 
-        assert exc.value.detail == 'Invalid order_by value. Must be one of: name, created_dt'
+        assert exc.value.detail == 'Invalid order_by value. Must be one of: last_name, created_dt'
 
 
 class TestListOrderSubclassValidation:
@@ -191,8 +204,8 @@ class TestListOrderSubclassValidation:
 
             @dataclass
             class _UppercaseOrder(ListOrder):
-                model = ExampleResource
-                fields = ['Name']
+                model = User
+                fields = ['Last_name']
 
         assert 'must be lowercase' in str(exc.value)
 
@@ -202,82 +215,73 @@ class TestListOrderGetOptions:
 
     def test_returns_order_by_and_direction_metadata(self):
         """get_options returns the choices, default field and default direction."""
-        assert ExampleResourceListOrder.get_options() == {
+        assert _UserListOrder.get_options() == {
             'order_by': {
                 'type': 'str',
                 'required': False,
-                'choices': [{'id': 'name', 'name': 'name'}, {'id': 'created_dt', 'name': 'created_dt'}],
-                'default': 'name',
+                'choices': [{'id': 'last_name', 'name': 'last_name'}, {'id': 'created_dt', 'name': 'created_dt'}],
+                'default': 'last_name',
             },
             'order_direction': {
                 'type': 'OrderDirection',
                 'required': False,
                 'choices': [{'id': 'asc', 'name': 'asc'}, {'id': 'desc', 'name': 'desc'}],
-                'default': 'desc',
+                'default': 'asc',
             },
         }
 
 
 class TestListFilterApply:
-    """Tests for ListFilter.apply adding WHERE clauses against seeded resources."""
+    """Tests for ListFilter.apply adding WHERE clauses against seeded users."""
 
     def test_search_filters_by_name_case_insensitively(self, db):
-        """The search filter matches the resource name case-insensitively."""
-        organization = OrganizationFactory.create_with_db(db, name='Org')
-        match = ExampleResourceFactory.create_with_db(db, organization=organization, name='Zebra')
-        ExampleResourceFactory.create_with_db(db, organization=organization, name='Giraffe')
-        user = AdminFactory.create_with_db(db, organization=organization)
+        """The search filter matches the user last name case-insensitively."""
+        match = UserFactory.create_with_db(db, last_name='Zebra')
+        UserFactory.create_with_db(db, last_name='Giraffe')
+        user = AdminFactory.create_with_db(db)
 
-        query = ExampleResourceListFilter(search='zeb').apply(select(ExampleResource), user)
+        query = _UserListFilter(search='zeb').apply(select(User), user)
         results = db.exec(query).all()
 
-        assert [r.id for r in results] == [match.id]
+        assert [u.id for u in results] == [match.id]
 
     def test_created_range_bounds_the_query(self, db):
         """created_from and created_to bound the query by creation datetime."""
-        organization = OrganizationFactory.create_with_db(db, name='Org')
-        inside = ExampleResourceFactory.create_with_db(
-            db, organization=organization, created_dt=datetime(2024, 1, 1, tzinfo=UTC)
-        )
-        ExampleResourceFactory.create_with_db(
-            db, organization=organization, created_dt=datetime(2024, 6, 1, tzinfo=UTC)
-        )
-        user = AdminFactory.create_with_db(db, organization=organization)
+        inside = UserFactory.create_with_db(db, created_dt=datetime(2024, 1, 1, tzinfo=UTC))
+        UserFactory.create_with_db(db, created_dt=datetime(2024, 6, 1, tzinfo=UTC))
+        user = AdminFactory.create_with_db(db)
 
-        filters = ExampleResourceListFilter(
+        filters = _UserListFilter(
             created_from=datetime(2023, 12, 1, tzinfo=UTC), created_to=datetime(2024, 2, 1, tzinfo=UTC)
         )
-        results = db.exec(filters.apply(select(ExampleResource), user)).all()
+        results = db.exec(filters.apply(select(User), user)).all()
 
-        assert [r.id for r in results] == [inside.id]
+        assert inside.id in {u.id for u in results}
+        assert all(r.created_dt <= datetime(2024, 2, 2, tzinfo=UTC) for r in results)
 
-    def test_organization_id_narrows_the_query(self, db):
-        """The organization_id filter narrows the query to one organization."""
-        org_a = OrganizationFactory.create_with_db(db, name='A')
-        org_b = OrganizationFactory.create_with_db(db, name='B')
-        wanted = ExampleResourceFactory.create_with_db(db, organization=org_a)
-        ExampleResourceFactory.create_with_db(db, organization=org_b)
-        superadmin = AdminFactory.create_with_db(db, organization=org_a, is_superadmin=True)
+    def test_user_id_narrows_the_query(self, db):
+        """The user_id FK filter narrows the query to one user."""
+        wanted = UserFactory.create_with_db(db, last_name='Wanted')
+        UserFactory.create_with_db(db, last_name='Other')
+        admin = AdminFactory.create_with_db(db)
 
-        filters = ExampleResourceListFilter(organization_id=org_a.id)
-        results = db.exec(filters.apply(select(ExampleResource), superadmin)).all()
+        filters = _UserListFilter(user_id=wanted.id)
+        results = db.exec(filters.apply(select(User), admin)).all()
 
-        assert [r.id for r in results] == [wanted.id]
+        assert [u.id for u in results] == [wanted.id]
 
     def test_no_filters_returns_query_unchanged(self, db):
         """With no filters set, apply leaves the query unchanged."""
-        organization = OrganizationFactory.create_with_db(db, name='Org')
-        resource = ExampleResourceFactory.create_with_db(db, organization=organization)
-        user = AdminFactory.create_with_db(db, organization=organization)
+        user = UserFactory.create_with_db(db)
 
-        results = db.exec(ExampleResourceListFilter().apply(select(ExampleResource), user)).all()
+        results = db.exec(_UserListFilter().apply(select(User), user)).all()
 
-        assert [r.id for r in results] == [resource.id]
+        assert [u.id for u in results] == [user.id]
 
     def test_base_apply_is_not_implemented(self):
         """The base ListFilter.apply raises NotImplementedError."""
         with pytest.raises(NotImplementedError):
-            ListFilter().apply(select(ExampleResource), None)
+            ListFilter().apply(select(User), None)
 
 
 class TestListFilterGetOptions:
@@ -285,48 +289,32 @@ class TestListFilterGetOptions:
 
     def test_populates_fk_choices_via_request_query(self, db):
         """FK fields produce id/name choices scoped by the model's request_query."""
-        organization = OrganizationFactory.create_with_db(db, name='Visible Org')
-        OrganizationFactory.create_with_db(db, name='Hidden Org')
-        user = AdminFactory.create_with_db(db, organization=organization)
+        visible = UserFactory.create_with_db(db, email='visible@example.com')
+        user = AdminFactory.create_with_db(db, email='admin@example.com')
         request = _request_for(user)
 
-        assert ExampleResourceListFilter.get_options(request, db) == {
-            'search': {'type': 'str', 'required': False},
-            'created_from': {'type': 'datetime', 'required': False},
-            'created_to': {'type': 'datetime', 'required': False},
-            'organization_id': {
-                'type': 'int',
-                'required': False,
-                'choices': [{'id': organization.id, 'name': organization.name}],
-            },
-        }
+        options = _UserListFilter.get_options(request, db)
 
-    def test_superadmin_sees_all_fk_choices(self, db):
-        """A superadmin's request_query returns every organization as an FK choice."""
-        org_a = OrganizationFactory.create_with_db(db, name='A')
-        org_b = OrganizationFactory.create_with_db(db, name='B')
-        superadmin = AdminFactory.create_with_db(db, organization=org_a, is_superadmin=True)
-
-        options = ExampleResourceListFilter.get_options(_request_for(superadmin), db)
-
-        assert options['organization_id']['choices'] == [
-            {'id': org_a.id, 'name': org_a.name},
-            {'id': org_b.id, 'name': org_b.name},
-        ]
+        assert options['search'] == {'type': 'str', 'required': False}
+        assert options['created_from'] == {'type': 'datetime', 'required': False}
+        assert options['created_to'] == {'type': 'datetime', 'required': False}
+        assert options['user_id']['type'] == 'int'
+        assert options['user_id']['required'] is False
+        choices = {choice['id']: choice['name'] for choice in options['user_id']['choices']}
+        assert choices[visible.id] == 'visible@example.com'
+        assert choices[user.id] == 'admin@example.com'
 
     def test_enum_and_list_and_required_field_metadata(self, db):
         """Enum fields produce value choices, list fields unwrap, and required fields are flagged."""
-        organization = OrganizationFactory.create_with_db(db, name='Org')
-        user = AdminFactory.create_with_db(db, organization=organization)
+        user = AdminFactory.create_with_db(db)
 
         assert _EnumAndListFilter.get_options(_request_for(user), db) == {
-            'status': {
-                'type': 'ResourceStatus',
+            'role': {
+                'type': 'UserRole',
                 'required': False,
                 'choices': [
-                    {'id': 'draft', 'name': 'draft'},
-                    {'id': 'active', 'name': 'active'},
-                    {'id': 'archived', 'name': 'archived'},
+                    {'id': 'admin', 'name': 'admin'},
+                    {'id': 'member', 'name': 'member'},
                 ],
             },
             'tags': {'type': 'str', 'required': False},
@@ -339,7 +327,7 @@ class TestGetFieldType:
 
     def test_unwraps_optional_field(self):
         """An Optional[str] field unwraps to str."""
-        field_info = ExampleResourceListFilter.model_fields['search']
+        field_info = _UserListFilter.model_fields['search']
         assert ListFilter.get_field_type(field_info) is str
 
     def test_unwraps_pipe_union_field(self):
@@ -366,15 +354,15 @@ class TestFKFilterField:
 
     def test_default_name_field(self):
         """FKFilterField attaches FKIntMeta with the default name field."""
-        annotated = FKFilterField(Organization)
+        annotated = FKFilterField(User)
         meta = annotated.__metadata__[0]
         assert isinstance(meta, FKIntMeta)
-        assert meta.model is Organization
+        assert meta.model is User
         assert meta.name_field == 'name'
 
     def test_custom_name_field(self):
         """FKFilterField honours a custom name_field."""
-        annotated = FKFilterField(Organization, name_field='billing_status')
+        annotated = FKFilterField(User, name_field='email')
         meta = annotated.__metadata__[0]
-        assert meta.model is Organization
-        assert meta.name_field == 'billing_status'
+        assert meta.model is User
+        assert meta.name_field == 'email'

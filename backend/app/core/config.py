@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     environment: str = 'development'  # development, staging, production
 
     # Database
-    database_url: str = 'postgresql://postgres@localhost/myapp'
+    database_url: str = 'postgresql://postgres@localhost/rosetta'
 
     # Redis
     redis_url: RedisDsn = 'redis://localhost:6379/0'  # ty: ignore[invalid-assignment]
@@ -64,7 +64,7 @@ class Settings(BaseSettings):
     # Logfire
     logfire_token: Optional[str] = None
     logfire_environment: str = 'development'
-    logfire_service_name: str = 'fastapi-sqlmodel-starter'
+    logfire_service_name: str = 'rosetta'
     logfire_traces_url: str = 'https://logfire-api.pydantic.dev/v1/traces'
 
     # Celery
@@ -72,10 +72,6 @@ class Settings(BaseSettings):
 
     # Pagination
     dft_page_size: int = 50
-
-    # Public API (read-only per-org API keys)
-    public_api_rate_limit_per_minute: int = 600  # Per-organization request cap per window
-    public_api_rate_limit_window_seconds: int = 60  # Length of the fixed rate-limit window
 
     def model_post_init(self, __context) -> None:
         if self.database_url.startswith('postgres://'):

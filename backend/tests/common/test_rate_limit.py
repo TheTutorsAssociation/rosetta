@@ -5,11 +5,9 @@ from app.common.api.errors import HTTP429
 from app.common.api.rate_limit import (
     confirm_rate_limit,
     get_client_ip,
-    public_api_rate_limit,
     rate_limit,
     rate_limit_by_ip,
 )
-from app.core.config import settings
 from app.core.redis import get_redis_client
 
 
@@ -25,13 +23,6 @@ def _build_request(headers: list[tuple[bytes, bytes]] | None = None, client: tup
     if client is not None:
         scope['client'] = client
     return Request(scope)
-
-
-def _org_request(organization_id: int) -> Request:
-    """Build a request carrying the organization_id that api_key_auth would have set."""
-    request = _build_request()
-    request.state.organization_id = organization_id
-    return request
 
 
 class _FakeUser:
@@ -73,44 +64,6 @@ class TestGetClientIp:
         request = _build_request()
 
         assert get_client_ip(request) == 'unknown'
-
-
-class TestPublicApiRateLimit:
-    """Tests for the per-organization public-API rate limit dependency."""
-
-    def test_allows_requests_up_to_the_limit(self, monkeypatch):
-        """Test that an org can make exactly the configured number of requests without a 429."""
-        monkeypatch.setattr(settings, 'public_api_rate_limit_per_minute', 3)
-        get_redis_client().delete('rate_limit:public_api:90001')
-        request = _org_request(90001)
-
-        for _ in range(3):
-            public_api_rate_limit(request)
-
-    def test_blocks_requests_over_the_limit(self, monkeypatch):
-        """Test that the request after the limit is exceeded raises HTTP429."""
-        monkeypatch.setattr(settings, 'public_api_rate_limit_per_minute', 2)
-        get_redis_client().delete('rate_limit:public_api:90002')
-        request = _org_request(90002)
-
-        public_api_rate_limit(request)
-        public_api_rate_limit(request)
-        with pytest.raises(HTTP429) as exc_info:
-            public_api_rate_limit(request)
-
-        assert exc_info.value.detail == 'Rate limit exceeded. Please try again later.'
-
-    def test_limit_is_scoped_per_organization(self, monkeypatch):
-        """Test that one org exhausting its quota does not rate limit another org."""
-        monkeypatch.setattr(settings, 'public_api_rate_limit_per_minute', 1)
-        get_redis_client().delete('rate_limit:public_api:90003')
-        get_redis_client().delete('rate_limit:public_api:90004')
-
-        public_api_rate_limit(_org_request(90003))
-        with pytest.raises(HTTP429):
-            public_api_rate_limit(_org_request(90003))
-
-        public_api_rate_limit(_org_request(90004))
 
 
 class TestRateLimitTwoStep:

@@ -161,7 +161,8 @@ class ListFilter(BaseModel):
     def get_options(cls, request: Request, db: DBSession) -> dict:
         """Get filter options for FK fields.
 
-        Uses each model's ``request_query`` to apply proper access control and tenant filtering.
+        Uses each model's ``request_query`` so the choice lists honour the same access control
+        as the list endpoint itself.
         """
         data = {}
         for field_name, field_info in cls.model_fields.items():

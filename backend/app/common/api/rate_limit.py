@@ -3,7 +3,6 @@
 from fastapi import Request
 
 from app.common.api.errors import HTTP429
-from app.core.config import settings
 from app.core.redis import get_redis_client
 
 
@@ -73,26 +72,6 @@ def confirm_rate_limit(request: Request) -> None:
         redis_client = request.state.rate_limit_redis
         ttl = request.state.rate_limit_ttl
         redis_client.set(key, '1', ex=ttl)
-
-
-def public_api_rate_limit(request: Request) -> None:
-    """Per-organization fixed-window rate limit for the public API.
-
-    Counts requests per organization across all its keys (so an org can't multiply its quota by
-    minting more keys) in a fixed window of ``settings.public_api_rate_limit_window_seconds``.
-    Relies on ``api_key_auth`` having set ``request.state.organization_id``, so it must run after
-    it in the router dependency list.
-
-    Keyed on the organization, not the IP, because a single org may call from many IPs (or share
-    one via NAT) — so an IP-based limit at the edge would be wrong.
-    """
-    organization_id = request.state.organization_id
-    redis_client = get_redis_client()
-    key = f'rate_limit:public_api:{organization_id}'
-    count = redis_client.incr(key)
-    redis_client.expire(key, settings.public_api_rate_limit_window_seconds, nx=True)
-    if count > settings.public_api_rate_limit_per_minute:
-        raise HTTP429('Rate limit exceeded. Please try again later.')
 
 
 def rate_limit_by_ip(prefix: str, window_seconds: int, max_attempts: int):

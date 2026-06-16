@@ -1,4 +1,4 @@
-.PHONY: install install-dev test test-cov lint type-check format run-dev run-worker reset-test-db clean help
+.PHONY: install install-dev test test-cov lint type-check format run-dev run-worker seed reset-test-db clean help
 
 # Install dependencies (runtime only)
 install:
@@ -40,6 +40,10 @@ run-dev:
 run-worker:
 	uv run celery -A app.worker worker -l info
 
+# Seed a development superadmin (idempotent)
+seed:
+	uv run python scripts/seed.py
+
 # Reset the test database (drop and recreate)
 reset-test-db:
 	psql -h localhost -U postgres -c "DROP DATABASE IF EXISTS starter_test"
@@ -63,5 +67,6 @@ help:
 	@echo "  format         - Auto-fix lint issues and format code"
 	@echo "  run-dev        - Run the development server"
 	@echo "  run-worker     - Run the Celery worker"
+	@echo "  seed           - Seed a development superadmin (idempotent)"
 	@echo "  reset-test-db  - Drop and recreate the test database"
 	@echo "  clean          - Clean up cache files"

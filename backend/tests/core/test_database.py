@@ -11,10 +11,7 @@ from app.auth.login import get_password_hash
 from app.auth.models import User, UserRole
 from app.common.api.errors import HTTP404
 from app.core.database import DBSession, create_db_and_tables, get_db, get_session
-from app.example_domain.models.example_resource import ExampleResource, ResourceStatus
-from app.organization.models.organization import Organization
-from tests.example_domain.factories import ExampleResourceFactory
-from tests.organization.factories import OrganizationFactory, UserFactory
+from tests.auth.factories import UserFactory
 
 
 class TestDatabaseModuleHelpers:
@@ -111,15 +108,12 @@ class TestDBSessionCreate:
 
     def test_create_adds_commits_and_refreshes(self, db: DBSession):
         """Test that ``create`` persists the instance and returns it with an assigned id."""
-        organization = OrganizationFactory.create_with_db(db, name='Create Org')
-
         user = db.create(
             User(
                 first_name='Test',
                 last_name='User',
                 email='create@example.com',
                 role=UserRole.MEMBER,
-                organization_id=organization.id,
                 hashed_password=get_password_hash('password123'),
             )
         )
@@ -132,14 +126,12 @@ class TestDBSessionCreate:
             'last_name': found.last_name,
             'email': found.email,
             'role': found.role,
-            'organization_id': found.organization_id,
         } == {
             'id': user.id,
             'first_name': 'Test',
             'last_name': 'User',
             'email': 'create@example.com',
             'role': UserRole.MEMBER,
-            'organization_id': organization.id,
         }
 
 
@@ -148,16 +140,16 @@ class TestDBSessionExists:
 
     def test_exists_returns_true_when_matching_row_present(self, db: DBSession):
         """Test that ``exists`` returns True when a row matches the given filters."""
-        organization = OrganizationFactory.create_with_db(db, name='Exists Org')
+        user = UserFactory.create_with_db(db, email='exists@example.com')
 
-        assert db.exists(Organization, name='Exists Org') is True
-        assert db.exists(Organization, id=organization.id) is True
+        assert db.exists(User, email='exists@example.com') is True
+        assert db.exists(User, id=user.id) is True
 
     def test_exists_returns_false_when_no_matching_row(self, db: DBSession):
         """Test that ``exists`` returns False when no row matches the given filters."""
-        OrganizationFactory.create_with_db(db, name='Exists Org')
+        UserFactory.create_with_db(db, email='exists@example.com')
 
-        assert db.exists(Organization, name='No Such Org') is False
+        assert db.exists(User, email='nobody@example.com') is False
 
 
 class TestDBSessionGetOr404:
@@ -165,38 +157,37 @@ class TestDBSessionGetOr404:
 
     def test_get_or_404_returns_instance_for_model(self, db: DBSession):
         """Test that ``get_or_404`` returns the matching instance when passed a model class."""
-        organization = OrganizationFactory.create_with_db(db, name='Found Org')
+        user = UserFactory.create_with_db(db, email='found@example.com')
 
-        result = db.get_or_404(Organization, id=organization.id)
+        result = db.get_or_404(User, id=user.id)
 
-        assert result.id == organization.id
-        assert result.name == 'Found Org'
+        assert result.id == user.id
+        assert result.email == 'found@example.com'
 
     def test_get_or_404_returns_instance_for_query(self, db: DBSession):
         """Test that ``get_or_404`` resolves a prebuilt select query and applies extra filters."""
-        organization = OrganizationFactory.create_with_db(db, name='Query Org')
-        resource = ExampleResourceFactory.create_with_db(db, name='A Resource', organization=organization)
+        user = UserFactory.create_with_db(db, email='query@example.com')
 
-        result = db.get_or_404(select(ExampleResource), id=resource.id)
+        result = db.get_or_404(select(User), id=user.id)
 
-        assert result.id == resource.id
-        assert result.name == 'A Resource'
+        assert result.id == user.id
+        assert result.email == 'query@example.com'
 
     def test_get_or_404_raises_for_missing_model(self, db: DBSession):
         """Test that ``get_or_404`` raises HTTP404 with the model name when nothing matches."""
-        OrganizationFactory.create_with_db(db, name='Present Org')
+        UserFactory.create_with_db(db, email='present@example.com')
 
         with pytest.raises(HTTP404) as exc_info:
-            db.get_or_404(Organization, id=999999)
+            db.get_or_404(User, id=999999)
 
-        assert exc_info.value.detail == 'Organization not found'
+        assert exc_info.value.detail == 'User not found'
 
     def test_get_or_404_raises_for_missing_query(self, db: DBSession):
         """Test that ``get_or_404`` raises HTTP404 with the column name when a query matches nothing."""
         with pytest.raises(HTTP404) as exc_info:
-            db.get_or_404(select(ExampleResource), id=999999)
+            db.get_or_404(select(User), id=999999)
 
-        assert exc_info.value.detail == 'ExampleResource not found'
+        assert exc_info.value.detail == 'User not found'
 
 
 class TestDBSessionGetOrCreate:
@@ -204,22 +195,31 @@ class TestDBSessionGetOrCreate:
 
     def test_get_or_create_creates_new_instance(self, db: DBSession):
         """Test that ``get_or_create`` creates and returns a new instance when none exists."""
-        result, created = db.get_or_create(Organization, name='Brand New Org', defaults={'is_demo': True})
+        result, created = db.get_or_create(
+            User,
+            email='brand-new@example.com',
+            defaults={
+                'last_name': 'New',
+                'role': UserRole.MEMBER,
+                'is_superadmin': True,
+                'hashed_password': get_password_hash('password123'),
+            },
+        )
 
         assert created is True
         assert result.id is not None
-        assert result.name == 'Brand New Org'
-        assert result.is_demo is True
+        assert result.email == 'brand-new@example.com'
+        assert result.is_superadmin is True
 
     def test_get_or_create_returns_existing_instance(self, db: DBSession):
         """Test that ``get_or_create`` returns the existing instance without applying defaults."""
-        organization = OrganizationFactory.create_with_db(db, name='Existing Org')
+        user = UserFactory.create_with_db(db, email='existing@example.com', is_superadmin=False)
 
-        result, created = db.get_or_create(Organization, name='Existing Org', defaults={'is_demo': True})
+        result, created = db.get_or_create(User, email='existing@example.com', defaults={'is_superadmin': True})
 
         assert created is False
-        assert result.id == organization.id
-        assert result.is_demo is False
+        assert result.id == user.id
+        assert result.is_superadmin is False
 
     def test_get_or_create_handles_integrity_error(self, db: DBSession):
         """Test that ``get_or_create`` recovers from a concurrent-insert IntegrityError.
@@ -228,8 +228,7 @@ class TestDBSessionGetOrCreate:
         (simulating the row not yet visible), so the real INSERT raises an IntegrityError and
         the retry SELECT finds the existing row.
         """
-        organization = OrganizationFactory.create_with_db(db, name='Race Org')
-        existing = UserFactory.create_with_db(db, email='race@example.com', organization=organization)
+        existing = UserFactory.create_with_db(db, email='race@example.com')
 
         real_exec = db.exec
         call_count = 0
@@ -250,7 +249,6 @@ class TestDBSessionGetOrCreate:
                 defaults={
                     'last_name': 'Racer',
                     'role': UserRole.MEMBER,
-                    'organization_id': organization.id,
                     'hashed_password': get_password_hash('password123'),
                 },
             )
@@ -265,34 +263,40 @@ class TestDBSessionCreateOrUpdate:
 
     def test_create_or_update_creates_new_instance(self, db: DBSession):
         """Test that ``create_or_update`` creates a new instance with the given defaults applied."""
-        result, created = db.create_or_update(Organization, name='Fresh Org', defaults={'is_demo': True})
+        result, created = db.create_or_update(
+            User,
+            email='fresh@example.com',
+            defaults={
+                'last_name': 'Fresh',
+                'role': UserRole.MEMBER,
+                'is_superadmin': True,
+                'hashed_password': get_password_hash('password123'),
+            },
+        )
 
         assert created is True
         assert result.id is not None
-        assert result.name == 'Fresh Org'
-        assert result.is_demo is True
+        assert result.email == 'fresh@example.com'
+        assert result.is_superadmin is True
 
-        found = db.exec(select(Organization).where(Organization.id == result.id)).one()
-        assert found.is_demo is True
+        found = db.exec(select(User).where(User.id == result.id)).one()
+        assert found.is_superadmin is True
 
     def test_create_or_update_updates_existing_instance(self, db: DBSession):
         """Test that ``create_or_update`` updates an existing instance and applies the defaults."""
-        organization = OrganizationFactory.create_with_db(db, name='Update Org')
-        resource = ExampleResourceFactory.create_with_db(
-            db, name='Updatable Resource', status=ResourceStatus.DRAFT, organization=organization
-        )
-        original_id = resource.id
+        user = UserFactory.create_with_db(db, email='update@example.com', is_superadmin=False)
+        original_id = user.id
 
         result, created = db.create_or_update(
-            ExampleResource,
+            User,
             id=original_id,
-            defaults={'status': ResourceStatus.ACTIVE, 'description': 'Now active'},
+            defaults={'is_superadmin': True, 'last_name': 'Updated'},
         )
 
         assert created is False
         assert result.id == original_id
-        assert result.status == ResourceStatus.ACTIVE
-        assert result.description == 'Now active'
+        assert result.is_superadmin is True
+        assert result.last_name == 'Updated'
 
     def test_create_or_update_handles_integrity_error(self, db: DBSession):
         """Test that ``create_or_update`` recovers from an IntegrityError by updating the existing row.
@@ -300,8 +304,7 @@ class TestDBSessionCreateOrUpdate:
         The unique ``User.email`` already exists, but the initial lookup is patched to miss, so
         the real INSERT raises an IntegrityError and the retry SELECT finds and updates the row.
         """
-        organization = OrganizationFactory.create_with_db(db, name='Race Update Org')
-        existing = UserFactory.create_with_db(db, email='race-update@example.com', organization=organization)
+        existing = UserFactory.create_with_db(db, email='race-update@example.com')
 
         real_exec = db.exec
         call_count = 0
@@ -322,7 +325,6 @@ class TestDBSessionCreateOrUpdate:
                 defaults={
                     'last_name': 'UpdatedRacer',
                     'role': UserRole.MEMBER,
-                    'organization_id': organization.id,
                     'hashed_password': get_password_hash('password123'),
                 },
             )

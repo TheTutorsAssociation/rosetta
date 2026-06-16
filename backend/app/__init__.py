@@ -9,9 +9,3 @@ them all here once.
 """
 
 from app.auth.models import User  # noqa: F401
-from app.example_domain.models.example_resource import (  # noqa: F401
-    ExampleResource,
-    ExampleResourceParticipant,
-)
-from app.organization.models.api_key import OrganizationApiKey  # noqa: F401
-from app.organization.models.organization import Organization  # noqa: F401

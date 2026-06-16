@@ -15,7 +15,6 @@ from app.common.api.paginate import PaginatedResponse
 from app.common.api.rate_limit import (
     confirm_rate_limit,
     get_client_ip,
-    public_api_rate_limit,
     rate_limit,
     rate_limit_by_ip,
 )
@@ -152,7 +151,6 @@ class TestCommonReExports:
         assert common.get_client_ip is get_client_ip
         assert common.rate_limit is rate_limit
         assert common.confirm_rate_limit is confirm_rate_limit
-        assert common.public_api_rate_limit is public_api_rate_limit
         assert common.rate_limit_by_ip is rate_limit_by_ip
 
     def test_common_all_matches_export_map(self):
@@ -184,7 +182,6 @@ class TestCommonReExports:
             'get_client_ip',
             'rate_limit',
             'confirm_rate_limit',
-            'public_api_rate_limit',
             'rate_limit_by_ip',
         }
 

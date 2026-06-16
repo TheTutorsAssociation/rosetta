@@ -13,8 +13,8 @@ from app.auth.permissions import Permission, PermissionCheck, role_check
 from app.core.config import settings
 from app.core.database import DBSession
 from app.main import app
+from tests.auth.factories import AdminFactory, MemberFactory
 from tests.conftest import AuthenticatedTestClient, _create_authenticated_client_for_user
-from tests.organization.factories import AdminFactory, MemberFactory
 
 perm_test_router = APIRouter(prefix='/test-permissions', tags=['test-permissions'])
 
@@ -54,9 +54,9 @@ app.include_router(perm_test_router, dependencies=[Depends(Permission.is_member)
 
 
 class TestLogin:
-    def test_login_success(self, client: TestClient, test_organization, db: DBSession):
+    def test_login_success(self, client: TestClient, db: DBSession):
         """A valid email and password returns a bearer access token."""
-        AdminFactory.create_with_db(db, email='admin@test.com', organization=test_organization)
+        AdminFactory.create_with_db(db, email='admin@test.com')
         r = client.post(
             client.app.url_path_for('login'),
             json={'email': 'admin@test.com', 'password': 'testing-password'},
@@ -66,9 +66,9 @@ class TestLogin:
         assert data['token_type'] == 'bearer'
         assert data['access_token']
 
-    def test_login_wrong_password(self, client: TestClient, test_organization, db: DBSession):
+    def test_login_wrong_password(self, client: TestClient, db: DBSession):
         """A wrong password returns 401 with a generic message that doesn't leak which field failed."""
-        AdminFactory.create_with_db(db, email='admin@test.com', organization=test_organization)
+        AdminFactory.create_with_db(db, email='admin@test.com')
         r = client.post(
             client.app.url_path_for('login'),
             json={'email': 'admin@test.com', 'password': 'wrong-password'},
@@ -181,11 +181,9 @@ class TestRoleGating:
         assert r.status_code == 403
         assert r.json() == {'detail': 'Admin access required'}
 
-    def test_admin_route_allows_superadmin(self, client: TestClient, test_organization, db: DBSession):
+    def test_admin_route_allows_superadmin(self, client: TestClient, db: DBSession):
         """A superadmin bypasses the admin role requirement."""
-        superadmin = MemberFactory.create_with_db(
-            db, email='super@test.com', is_superadmin=True, organization=test_organization
-        )
+        superadmin = MemberFactory.create_with_db(db, email='super@test.com', is_superadmin=True)
         superadmin_client = _create_authenticated_client_for_user(client, superadmin)
         r = superadmin_client.get(superadmin_client.app.url_path_for('test-admin-only'))
         assert r.status_code == 200
@@ -215,11 +213,9 @@ class TestRoleGating:
         assert r.status_code == 403
         assert r.json() == {'detail': 'Admin and Superadmin access required'}
 
-    def test_and_route_allows_admin_superadmin(self, client: TestClient, test_organization, db: DBSession):
+    def test_and_route_allows_admin_superadmin(self, client: TestClient, db: DBSession):
         """An AND combinator passes only when both sides pass (an admin who is also superadmin)."""
-        admin_superadmin = AdminFactory.create_with_db(
-            db, email='adminsuper@test.com', is_superadmin=True, organization=test_organization
-        )
+        admin_superadmin = AdminFactory.create_with_db(db, email='adminsuper@test.com', is_superadmin=True)
         admin_superadmin_client = _create_authenticated_client_for_user(client, admin_superadmin)
         r = admin_superadmin_client.get(admin_superadmin_client.app.url_path_for('test-admin-and-superadmin'))
         assert r.status_code == 200
@@ -290,9 +286,9 @@ class TestCustomHTTPBearer:
 
 
 class TestTokenIdentity:
-    def test_stale_role_in_token_is_rejected(self, client: TestClient, test_organization, db: DBSession):
+    def test_stale_role_in_token_is_rejected(self, client: TestClient, db: DBSession):
         """A token whose role no longer matches the DB user is rejected (401)."""
-        member = MemberFactory.create_with_db(db, email='member2@test.com', organization=test_organization)
+        member = MemberFactory.create_with_db(db, email='member2@test.com')
         member_client = _create_authenticated_client_for_user(client, member)
         member.role = UserRole.ADMIN
         db.add(member)

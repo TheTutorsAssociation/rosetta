@@ -17,8 +17,8 @@ from app.core import database
 from app.core.celery import celery_app
 from app.core.config import settings
 from app.core.redis import get_redis_client
-from app.main import app, public_app
-from tests.organization.factories import AdminFactory, MemberFactory, OrganizationFactory
+from app.main import app
+from tests.auth.factories import AdminFactory, MemberFactory
 
 
 def _configure_test_redis() -> None:
@@ -156,24 +156,6 @@ class AuthenticatedTestClient(TestClient):
         return super().options(*args, headers=headers, **kwargs)
 
 
-class ApiKeyTestClient(TestClient):
-    """A ``TestClient`` that injects ``Authorization: Bearer <full_key>`` on ``get()``.
-
-    Used for the read-only public API (per-org API keys). Distinct from
-    ``AuthenticatedTestClient`` which is JWT-based; the public API is GET-only so only ``get``
-    needs the header.
-    """
-
-    def __init__(self, app, full_key: str):
-        super().__init__(app)
-        self.full_key = full_key
-        self._auth_header = {'Authorization': f'Bearer {full_key}'}
-
-    def get(self, *args, **kwargs):
-        headers = {**self._auth_header, **kwargs.pop('headers', {})}
-        return super().get(*args, headers=headers, **kwargs)
-
-
 _test_db_url = get_test_database_url()
 _ensure_database_exists(_test_db_url)
 os.environ['TEST_DATABASE_URL'] = _test_db_url
@@ -210,9 +192,9 @@ def eager_celery():
 def clear_redis():
     """Flush the worker's Redis DB before and after each test.
 
-    Rate-limit counters (per-IP login throttle, per-org public-API limit) live in Redis, so
-    they must be cleared between tests or one test's attempts leak into the next and trigger
-    spurious 429s. Failures are swallowed so a Redis hiccup never masks the real test result.
+    Rate-limit counters (the per-IP login throttle) live in Redis, so they must be cleared
+    between tests or one test's attempts leak into the next and trigger spurious 429s. Failures
+    are swallowed so a Redis hiccup never masks the real test result.
     """
     try:
         get_redis_client().flushdb()
@@ -275,30 +257,6 @@ def client_fixture(db: database.DBSession) -> Generator[TestClient, None, None]:
     app.dependency_overrides.clear()
 
 
-@pytest.fixture(name='public_api_client')
-def public_api_client_fixture(db: database.DBSession):
-    """A factory for ``ApiKeyTestClient`` plus the ``public_app``, both wired to the test session.
-
-    A mounted sub-app does NOT inherit the parent's ``dependency_overrides``, so ``get_db`` is
-    overridden on ``public_app`` itself (and on ``app`` so route resolution via the parent
-    works). Yields ``(make_client, public_app)``; ``make_client(full_key)`` builds the client
-    and ``public_app`` is returned so error-path tests can register their own overrides.
-    """
-
-    def _get_session_override():
-        return db
-
-    public_app.dependency_overrides[database.get_db] = _get_session_override
-    app.dependency_overrides[database.get_db] = _get_session_override
-
-    def _make_client(full_key: str) -> ApiKeyTestClient:
-        return ApiKeyTestClient(app, full_key)
-
-    yield _make_client, public_app
-    public_app.dependency_overrides.clear()
-    app.dependency_overrides.clear()
-
-
 def _create_authenticated_client_for_user(client: TestClient, user: User) -> AuthenticatedTestClient:
     """Mint a web JWT carrying the ``(id, email, role)`` triple and wrap it in a client."""
     assert user.id is not None
@@ -308,23 +266,17 @@ def _create_authenticated_client_for_user(client: TestClient, user: User) -> Aut
     return AuthenticatedTestClient(client.app, token, user)
 
 
-@pytest.fixture(name='test_organization')
-def test_organization_fixture(db: database.DBSession):
-    """A shared test organization the role-client fixtures attach their users to."""
-    return OrganizationFactory.create_with_db(db, name='Test Organization')
-
-
 @pytest.fixture(name='admin_client')
-def admin_client_fixture(client: TestClient, test_organization, db: database.DBSession) -> AuthenticatedTestClient:
-    """An authenticated client for an ADMIN user in the shared test organization."""
-    admin = AdminFactory.create_with_db(db, email='admin@test.com', organization=test_organization)
+def admin_client_fixture(client: TestClient, db: database.DBSession) -> AuthenticatedTestClient:
+    """An authenticated client for an ADMIN user."""
+    admin = AdminFactory.create_with_db(db, email='admin@test.com')
     return _create_authenticated_client_for_user(client, admin)
 
 
 @pytest.fixture(name='member_client')
-def member_client_fixture(client: TestClient, test_organization, db: database.DBSession) -> AuthenticatedTestClient:
-    """An authenticated client for a MEMBER user in the shared test organization."""
-    member = MemberFactory.create_with_db(db, email='member@test.com', organization=test_organization)
+def member_client_fixture(client: TestClient, db: database.DBSession) -> AuthenticatedTestClient:
+    """An authenticated client for a MEMBER user."""
+    member = MemberFactory.create_with_db(db, email='member@test.com')
     return _create_authenticated_client_for_user(client, member)
 
 

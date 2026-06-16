@@ -41,7 +41,6 @@ _EXPORTS = {
     'get_client_ip': 'app.common.api.rate_limit',
     'rate_limit': 'app.common.api.rate_limit',
     'confirm_rate_limit': 'app.common.api.rate_limit',
-    'public_api_rate_limit': 'app.common.api.rate_limit',
     'rate_limit_by_ip': 'app.common.api.rate_limit',
 }
 

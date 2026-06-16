@@ -67,7 +67,7 @@ celery_app.conf.update(
     worker_disable_rate_limits=True,
     worker_cancel_long_running_tasks_on_connection_loss=False,
     # Add scheduled tasks here, e.g.:
-    # 'nightly-cleanup': {'task': 'example_domain.tasks.cleanup', 'schedule': crontab(hour=2, minute=0)}
+    # 'nightly-cleanup': {'task': 'members.tasks.cleanup', 'schedule': crontab(hour=2, minute=0)}
     beat_schedule={},
 )
 

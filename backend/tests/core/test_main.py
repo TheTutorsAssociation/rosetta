@@ -1,11 +1,9 @@
-"""Tests for the FastAPI application entrypoint: healthcheck, CORS, docs and the public sub-app mount."""
+"""Tests for the FastAPI application entrypoint: healthcheck, CORS, docs and lifespan."""
 
-import importlib
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-import app.main as main_module
 from app.core.config import settings
 from app.main import app
 
@@ -89,7 +87,7 @@ class TestMainAppDocs:
         assert r.status_code == 200
         assert r.headers['content-type'] == 'application/json'
         data = r.json()
-        assert data['info']['title'] == 'FastAPI SQLModel Starter'
+        assert data['info']['title'] == 'rosetta'
         assert data['info']['version'] == '0.1.0'
 
 
@@ -131,46 +129,3 @@ class TestLifespan:
         mock_init_sentry.assert_called_once_with()
         mock_configure_logfire.assert_not_called()
         mock_instrument.assert_not_called()
-
-
-class TestPublicAppLogfireInstrumentation:
-    @patch('app.main.logfire.instrument_fastapi')
-    def test_public_app_instrumented_when_token_set_at_import(self, mock_instrument, monkeypatch):
-        """When ``logfire_token`` is set at import time, the public sub-app is instrumented."""
-        monkeypatch.setattr(settings, 'logfire_token', 'test-token')
-        try:
-            importlib.reload(main_module)
-            mock_instrument.assert_any_call(main_module.public_app)
-        finally:
-            importlib.reload(main_module)
-
-
-class TestPublicSubApp:
-    def test_public_openapi_is_key_free(self, public_api_client):
-        """GET /api/v1/openapi.json returns 200 with no Authorization header."""
-        make_client, _ = public_api_client
-        client = make_client('')
-        r = TestClient(client.app).get('/api/v1/openapi.json')
-
-        assert r.status_code == 200
-        assert r.headers['content-type'] == 'application/json'
-        data = r.json()
-        assert data['info']['title'] == 'FastAPI SQLModel Starter Public API'
-        assert data['info']['version'] == '1.0.0'
-
-    def test_public_scalar_docs_is_key_free(self, public_api_client):
-        """GET /api/v1/scalar returns 200 HTML with no Authorization header."""
-        make_client, _ = public_api_client
-        client = make_client('')
-        r = TestClient(client.app).get('/api/v1/scalar')
-
-        assert r.status_code == 200
-        assert 'text/html' in r.headers['content-type']
-
-    def test_public_data_route_requires_key(self, public_api_client):
-        """A public data route returns 401 when no API key is provided."""
-        make_client, _ = public_api_client
-        client = make_client('')
-        r = TestClient(client.app).get(client.app.url_path_for('public-example-resource-list'))
-
-        assert r.status_code == 401

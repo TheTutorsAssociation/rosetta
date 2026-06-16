@@ -119,12 +119,10 @@ class TestWebsiteUrlValidator:
 
 
 class TestDefaultValues:
-    """Tests for the default values of pagination and public-API settings."""
+    """Tests for the default values of pagination settings."""
 
     def test_default_values(self):
-        """Default pagination and public-API rate-limit values are as expected."""
+        """Default pagination values are as expected."""
         settings = Settings(testing=True, _env_file=None)
 
         assert settings.dft_page_size == 50
-        assert settings.public_api_rate_limit_per_minute == 600
-        assert settings.public_api_rate_limit_window_seconds == 60

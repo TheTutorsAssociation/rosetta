@@ -1,6 +1,6 @@
-import { ApiError, apiRequest, itemsApi, apiBaseUrl } from '~/data/api';
+import { ApiError, apiRequest, authApi, apiBaseUrl } from '~/data/api';
 import { safeGetItem } from '~/helpers/storage';
-import { mockItem, mockItems } from '../mocks';
+import { mockUser } from '../mocks';
 
 jest.mock('~/helpers/storage');
 
@@ -28,13 +28,13 @@ describe('apiRequest', () => {
 
   it('prefixes the path with the base url', async () => {
     mockFetch.mockResolvedValue(jsonResponse({ ok: true }));
-    await apiRequest('/items');
-    expect(lastCall()[0]).toBe(`${apiBaseUrl}/items`);
+    await apiRequest('/ping');
+    expect(lastCall()[0]).toBe(`${apiBaseUrl}/ping`);
   });
 
   it('sends a JSON content-type header', async () => {
     mockFetch.mockResolvedValue(jsonResponse({ ok: true }));
-    await apiRequest('/items');
+    await apiRequest('/ping');
     expect((lastCall()[1].headers as Record<string, string>)['Content-Type']).toBe(
       'application/json',
     );
@@ -43,24 +43,24 @@ describe('apiRequest', () => {
   it('attaches a bearer token from storage when present', async () => {
     mockGetItem.mockReturnValue('abc123');
     mockFetch.mockResolvedValue(jsonResponse({ ok: true }));
-    await apiRequest('/items');
+    await apiRequest('/ping');
     expect((lastCall()[1].headers as Record<string, string>).Authorization).toBe('Bearer abc123');
   });
 
   it('omits the Authorization header when there is no token', async () => {
     mockFetch.mockResolvedValue(jsonResponse({ ok: true }));
-    await apiRequest('/items');
+    await apiRequest('/ping');
     expect((lastCall()[1].headers as Record<string, string>).Authorization).toBeUndefined();
   });
 
   it('parses and returns the JSON body on a successful response', async () => {
-    mockFetch.mockResolvedValue(jsonResponse(mockItem));
-    await expect(apiRequest('/items/1')).resolves.toEqual(mockItem);
+    mockFetch.mockResolvedValue(jsonResponse(mockUser));
+    await expect(apiRequest('/users/me')).resolves.toEqual(mockUser);
   });
 
   it('throws an ApiError carrying the response status on a non-ok response', async () => {
     mockFetch.mockResolvedValue(jsonResponse({ detail: 'Not found' }, { status: 404 }));
-    await expect(apiRequest('/items/1')).rejects.toMatchObject({
+    await expect(apiRequest('/users/me')).rejects.toMatchObject({
       name: 'ApiError',
       status: 404,
     });
@@ -68,82 +68,82 @@ describe('apiRequest', () => {
 
   it('uses json.detail as the error message when present', async () => {
     mockFetch.mockResolvedValue(jsonResponse({ detail: 'Boom detail' }, { status: 500 }));
-    await expect(apiRequest('/items')).rejects.toThrow('Boom detail');
+    await expect(apiRequest('/ping')).rejects.toThrow('Boom detail');
   });
 
   it('falls back to json.error when detail is absent', async () => {
     mockFetch.mockResolvedValue(jsonResponse({ error: 'Boom error' }, { status: 400 }));
-    await expect(apiRequest('/items')).rejects.toThrow('Boom error');
+    await expect(apiRequest('/ping')).rejects.toThrow('Boom error');
   });
 
   it('falls back to the status text when the error body has neither detail nor error', async () => {
     mockFetch.mockResolvedValue(
       new Response('not json', { status: 503, statusText: 'Service Unavailable' }),
     );
-    await expect(apiRequest('/items')).rejects.toThrow('Service Unavailable');
+    await expect(apiRequest('/ping')).rejects.toThrow('Service Unavailable');
+  });
+
+  it('flattens a FastAPI 422 detail array into one message', async () => {
+    mockFetch.mockResolvedValue(
+      jsonResponse(
+        {
+          detail: [
+            { loc: ['body', 'password'], msg: 'password too long', type: 'string_too_long' },
+            { loc: ['body', 'email'], msg: 'not a valid email', type: 'value_error' },
+          ],
+        },
+        { status: 422 },
+      ),
+    );
+    await expect(apiRequest('/auth/login')).rejects.toThrow(
+      'password too long; not a valid email',
+    );
+  });
+
+  it('falls back to a generic message when there is no detail, error, or status text', async () => {
+    mockFetch.mockResolvedValue(new Response('not json', { status: 500, statusText: '' }));
+    await expect(apiRequest('/ping')).rejects.toThrow('Request failed');
   });
 });
 
-describe('itemsApi', () => {
+describe('authApi.login', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     global.fetch = mockFetch as typeof fetch;
     mockGetItem.mockReturnValue(null);
   });
 
-  it('list requests GET /items with the filters as a query string', async () => {
-    mockFetch.mockResolvedValue(
-      jsonResponse({ items: mockItems, total: 3, page: 1, page_size: 20 }),
-    );
-    await itemsApi.list({ page: 2, search: 'widget' });
-    expect(lastCall()[0]).toBe(`${apiBaseUrl}/items?page=2&search=widget`);
-    expect(lastCall()[1].method).toBeUndefined();
-  });
-
-  it('list omits empty filter values from the query string', async () => {
-    mockFetch.mockResolvedValue(jsonResponse({ items: [], total: 0, page: 1, page_size: 20 }));
-    await itemsApi.list({ page: 1, search: '' });
-    expect(lastCall()[0]).toBe(`${apiBaseUrl}/items?page=1`);
-  });
-
-  it('list requests GET /items with no query string when no filters are given', async () => {
-    mockFetch.mockResolvedValue(jsonResponse({ items: [], total: 0, page: 1, page_size: 20 }));
-    await itemsApi.list();
-    expect(lastCall()[0]).toBe(`${apiBaseUrl}/items`);
-  });
-
-  it('get requests GET /items/:id', async () => {
-    mockFetch.mockResolvedValue(jsonResponse(mockItem));
-    await itemsApi.get(5);
-    expect(lastCall()[0]).toBe(`${apiBaseUrl}/items/5`);
-    expect(lastCall()[1].method).toBeUndefined();
-  });
-
-  it('create POSTs the payload as JSON to /items', async () => {
-    mockFetch.mockResolvedValue(jsonResponse(mockItem));
-    await itemsApi.create({ name: 'New', description: 'D', status: 'draft', category: null });
-    expect(lastCall()[0]).toBe(`${apiBaseUrl}/items`);
+  it('POSTs the credentials as JSON to /auth/login', async () => {
+    mockFetch.mockResolvedValue(jsonResponse({ access_token: 'tok', token_type: 'bearer' }));
+    await authApi.login('ada@example.com', 'hunter2');
+    expect(lastCall()[0]).toBe(`${apiBaseUrl}/auth/login`);
     expect(lastCall()[1].method).toBe('POST');
     expect(lastCall()[1].body).toBe(
-      JSON.stringify({ name: 'New', description: 'D', status: 'draft', category: null }),
+      JSON.stringify({ email: 'ada@example.com', password: 'hunter2' }),
     );
   });
 
-  it('update PUTs the payload as JSON to /items/:id', async () => {
-    mockFetch.mockResolvedValue(jsonResponse(mockItem));
-    await itemsApi.update(7, { name: 'Edit', description: 'D', status: 'active', category: null });
-    expect(lastCall()[0]).toBe(`${apiBaseUrl}/items/7`);
-    expect(lastCall()[1].method).toBe('PUT');
-    expect(lastCall()[1].body).toBe(
-      JSON.stringify({ name: 'Edit', description: 'D', status: 'active', category: null }),
-    );
+  it('returns the access token and token type from the response', async () => {
+    mockFetch.mockResolvedValue(jsonResponse({ access_token: 'tok', token_type: 'bearer' }));
+    await expect(authApi.login('ada@example.com', 'hunter2')).resolves.toEqual({
+      access_token: 'tok',
+      token_type: 'bearer',
+    });
+  });
+});
+
+describe('authApi.checkUser', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    global.fetch = mockFetch as typeof fetch;
+    mockGetItem.mockReturnValue(null);
   });
 
-  it('remove DELETEs /items/:id', async () => {
-    mockFetch.mockResolvedValue(jsonResponse(null));
-    await itemsApi.remove(9);
-    expect(lastCall()[0]).toBe(`${apiBaseUrl}/items/9`);
-    expect(lastCall()[1].method).toBe('DELETE');
+  it('GETs the current user from /users/me', async () => {
+    mockFetch.mockResolvedValue(jsonResponse(mockUser));
+    await expect(authApi.checkUser()).resolves.toEqual(mockUser);
+    expect(lastCall()[0]).toBe(`${apiBaseUrl}/users/me`);
+    expect(lastCall()[1].method).toBeUndefined();
   });
 });
 

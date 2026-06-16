@@ -25,6 +25,6 @@ describe('buildMetaData', () => {
 
 describe('APP_NAME', () => {
   it('exposes the configured app name', () => {
-    expect(APP_NAME).toBe('RR Starter');
+    expect(APP_NAME).toBe('rosetta');
   });
 });

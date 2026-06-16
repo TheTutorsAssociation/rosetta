@@ -18,6 +18,7 @@
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif,
     'Apple Color Emoji', 'Segoe UI Emoji';
+  --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   /* ---- Base colours ---- */
@@ -27,32 +28,34 @@
   --color-current: currentColor;
   --color-inherit: inherit;
 
-  /* ---- Primary (brand / primary action) ---- */
-  --color-primary-50: #eff6ff;
-  --color-primary-100: #dbeafe;
-  --color-primary-200: #bfdbfe;
-  --color-primary-300: #93c5fd;
-  --color-primary-400: #60a5fa;
-  --color-primary-500: #3b82f6;
-  --color-primary-600: #2563eb;
-  --color-primary-700: #1d4ed8;
-  --color-primary-800: #1e40af;
-  --color-primary-900: #1e3a8a;
+  /* ---- Primary (brand / primary action) — TTA royal blue ----
+     Anchored on the live site's Astra brand colours: #091697 (brand), #000063
+     (navy, hover/dark), #BFD1FF (light tint). thetutorsassociation.org.uk */
+  --color-primary-50: #eef1ff;
+  --color-primary-100: #dde3ff;
+  --color-primary-200: #bfd1ff;
+  --color-primary-300: #9aa9f4;
+  --color-primary-400: #5f6fe0;
+  --color-primary-500: #2f41c4;
+  --color-primary-600: #091697;
+  --color-primary-700: #000063;
+  --color-primary-800: #00004f;
+  --color-primary-900: #00003a;
   --color-primary: var(--color-primary-600);
   --color-primary-soft: var(--color-primary-50);
   --color-primary-dark: var(--color-primary-700);
 
-  /* ---- Secondary (accent) ---- */
-  --color-secondary-50: #f5f3ff;
-  --color-secondary-100: #ede9fe;
-  --color-secondary-200: #ddd6fe;
-  --color-secondary-300: #c4b5fd;
-  --color-secondary-400: #a78bfa;
-  --color-secondary-500: #8b5cf6;
-  --color-secondary-600: #7c3aed;
-  --color-secondary-700: #6d28d9;
-  --color-secondary-800: #5b21b6;
-  --color-secondary-900: #4c1d95;
+  /* ---- Secondary (accent) — TTA maroon (the site's link-hover accent #630000) ---- */
+  --color-secondary-50: #fbeaea;
+  --color-secondary-100: #f6cccc;
+  --color-secondary-200: #eda3a3;
+  --color-secondary-300: #e07474;
+  --color-secondary-400: #c74545;
+  --color-secondary-500: #9e2020;
+  --color-secondary-600: #630000;
+  --color-secondary-700: #520000;
+  --color-secondary-800: #420000;
+  --color-secondary-900: #330000;
   --color-secondary: var(--color-secondary-600);
   --color-secondary-soft: var(--color-secondary-50);
   --color-secondary-dark: var(--color-secondary-700);
@@ -95,13 +98,6 @@
   --color-error: var(--color-error-600);
   --color-error-soft: var(--color-error-50);
   --color-error-dark: var(--color-error-700);
-
-  /* ---- Spacing (extends Tailwind's default scale with named steps) ---- */
-  --spacing-xs: 0.5rem;
-  --spacing-sm: 0.75rem;
-  --spacing-md: 1rem;
-  --spacing-lg: 1.5rem;
-  --spacing-xl: 2.5rem;
 
   /* ---- Radii ---- */
   --radius-sm: 0.5rem;

@@ -1,5 +1,5 @@
 import { screen, fireEvent } from '@testing-library/react';
-import { Input, Textarea } from '~/components/ui';
+import { Input } from '~/components/ui';
 import { renderWithRouter } from '../../utils/render';
 
 describe('Input', () => {
@@ -38,27 +38,5 @@ describe('Input', () => {
     const input = screen.getByLabelText('Email');
     expect(input).not.toHaveAttribute('aria-invalid');
     expect(input).not.toHaveAttribute('aria-describedby');
-  });
-});
-
-describe('Textarea', () => {
-  it('associates the visible label with the textarea', () => {
-    renderWithRouter(<Textarea label="Notes" value="" onChange={() => {}} />);
-    expect(screen.getByLabelText('Notes')).toBeInTheDocument();
-  });
-
-  it('calls onChange when the user types', () => {
-    const onChange = jest.fn();
-    renderWithRouter(<Textarea label="Notes" value="" onChange={onChange} />);
-    fireEvent.change(screen.getByLabelText('Notes'), { target: { value: 'hello' } });
-    expect(onChange).toHaveBeenCalledTimes(1);
-  });
-
-  it('marks the field invalid and describes it with the error when there is an error', () => {
-    renderWithRouter(<Textarea label="Notes" value="" onChange={() => {}} error="Too short" />);
-    const textarea = screen.getByLabelText('Notes');
-    expect(textarea).toHaveAttribute('aria-invalid', 'true');
-    const describedById = textarea.getAttribute('aria-describedby');
-    expect(screen.getByText('Too short')).toHaveAttribute('id', describedById);
   });
 });

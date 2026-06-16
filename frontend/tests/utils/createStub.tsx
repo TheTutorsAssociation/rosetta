@@ -1,6 +1,6 @@
 import { render, type RenderResult } from '@testing-library/react';
 import { createRoutesStub } from 'react-router';
-import { AppProviders } from '~/providers/AppProviders';
+import { ToastProvider } from '~/providers/ToastProvider';
 
 type StubRoutes = Parameters<typeof createRoutesStub>[0];
 
@@ -21,7 +21,7 @@ export interface StubRoute {
 export interface CreateRouteStubOptions {
   /** URL the stub router starts at. Defaults to `/`. */
   initialPath?: string;
-  /** Wrap the routes in {@link AppProviders} (Toast, …). Defaults to true. */
+  /** Wrap the routes in {@link ToastProvider}. Defaults to true. */
   withProviders?: boolean;
 }
 
@@ -37,5 +37,5 @@ export function createRouteStub(
 ): RenderResult {
   const Stub = createRoutesStub(routes as unknown as StubRoutes);
   const element = <Stub initialEntries={[initialPath]} />;
-  return render(withProviders ? <AppProviders>{element}</AppProviders> : element);
+  return render(withProviders ? <ToastProvider>{element}</ToastProvider> : element);
 }

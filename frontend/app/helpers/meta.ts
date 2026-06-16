@@ -2,7 +2,7 @@
  * App display name used as the `<title>` suffix and OG site name. Change this
  * to your app's name — it is a placeholder.
  */
-export const APP_NAME = 'RR Starter';
+export const APP_NAME = 'rosetta';
 
 /**
  * A single meta tag. Structurally compatible with React Router's

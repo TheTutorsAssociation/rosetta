@@ -1,5 +1,5 @@
 import { screen } from '@testing-library/react';
-import NotFound from '~/routes/not-found';
+import NotFound, { meta } from '~/routes/not-found';
 import { createRouteStub } from '../utils/createStub';
 
 function renderNotFound(): void {
@@ -15,5 +15,9 @@ describe('not-found route', () => {
   it('links back to the home page', () => {
     renderNotFound();
     expect(screen.getByRole('link', { name: /back to home/i })).toHaveAttribute('href', '/');
+  });
+
+  it('builds the page title from meta', () => {
+    expect(meta()).toContainEqual({ title: 'Page not found | rosetta' });
   });
 });

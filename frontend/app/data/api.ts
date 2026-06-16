@@ -1,6 +1,6 @@
 import { apiBaseUrl } from '~/helpers/env';
 import { safeGetItem } from '~/helpers/storage';
-import type { Item, ItemFilters, ItemPayload, User } from '~/types';
+import type { User } from '~/types';
 
 export { apiBaseUrl };
 
@@ -24,12 +24,29 @@ export type PaginatedResponse<T> = {
 };
 
 /**
+ * Build a human-readable message from an error response body. FastAPI sends a
+ * string `detail` for most errors but an array of `{ loc, msg, type }` objects
+ * for 422 validation failures; both are flattened to a string here. Falls back
+ * to the HTTP status text, then a generic message.
+ */
+function errorMessage(body: unknown, statusText: string): string {
+  const b = (body ?? {}) as { detail?: unknown; error?: unknown };
+  if (typeof b.detail === 'string') return b.detail;
+  if (Array.isArray(b.detail)) {
+    return b.detail.map((entry: { msg: string }) => entry.msg).join('; ');
+  }
+  if (typeof b.error === 'string') return b.error;
+  return statusText || 'Request failed';
+}
+
+/**
  * The single typed HTTP client. Injects the base URL and JSON headers, attaches
  * a bearer token from storage when present, parses the JSON body, and throws
- * {@link ApiError} on a non-ok response (message from `detail` or `error`).
+ * {@link ApiError} on a non-ok response (message from `detail`, `error`, or the
+ * status text).
  *
  * Components never call `fetch()` directly — loaders and actions call this (or a
- * resource object built on it, like {@link itemsApi}).
+ * resource object built on it, like {@link authApi}).
  */
 export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = safeGetItem('token');
@@ -43,65 +60,30 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
   const body = await response.json().catch(() => null);
 
   if (!response.ok) {
-    const message = body?.detail ?? body?.error ?? response.statusText ?? 'Request failed';
-    throw new ApiError(response.status, message);
+    throw new ApiError(response.status, errorMessage(body, response.statusText));
   }
 
   return body as T;
 }
 
-type QueryValue = string | number | boolean | null | undefined;
-
-/** Build a query string from a flat filter object, skipping empty values. */
-function withQuery(path: string, params?: object): string {
-  if (!params) {
-    return path;
-  }
-  const search = new URLSearchParams();
-  for (const [key, value] of Object.entries(params as Record<string, QueryValue>)) {
-    if (value === undefined || value === null || value === '') {
-      continue;
-    }
-    search.append(key, String(value));
-  }
-  const qs = search.toString();
-  return qs ? `${path}?${qs}` : path;
+/** Successful response from `POST /auth/login`. */
+export interface LoginResponse {
+  access_token: string;
+  token_type: string;
 }
 
 /**
- * Example resource client. Group each resource's endpoints into an object like
- * this, all routed through {@link apiRequest}, and call them from loaders and
- * actions.
- */
-export const itemsApi = {
-  list: (params?: ItemFilters): Promise<PaginatedResponse<Item>> =>
-    apiRequest(withQuery('/items', params)),
-
-  get: (id: number): Promise<Item> => apiRequest(`/items/${id}`),
-
-  create: (payload: ItemPayload): Promise<Item> =>
-    apiRequest('/items', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-
-  update: (id: number, payload: ItemPayload): Promise<Item> =>
-    apiRequest(`/items/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    }),
-
-  remove: (id: number): Promise<void> =>
-    apiRequest(`/items/${id}`, {
-      method: 'DELETE',
-    }),
-};
-
-/**
- * Auth resource client. `checkUser` validates the stored bearer token by
- * fetching the signed-in user; it rejects (with {@link ApiError}) when the
- * token is missing or invalid. Consumed by `AuthProvider`.
+ * Auth resource client. `login` exchanges credentials for a bearer token via
+ * `POST /auth/login`; `checkUser` validates the stored token by fetching the
+ * signed-in user (it rejects with {@link ApiError} when the token is missing or
+ * invalid). Consumed by the login route and `AuthProvider`.
  */
 export const authApi = {
+  login: (email: string, password: string): Promise<LoginResponse> =>
+    apiRequest('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }),
+
   checkUser: (): Promise<User> => apiRequest('/users/me'),
 };

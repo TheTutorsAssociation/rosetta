@@ -1,8 +1,11 @@
 # Testing Guide
 
-How tests are written and run in this starter. The goal is a small, self-documenting suite that
-exercises the real React Router data flow without a backend, mocks only the API boundary, and
-holds the coverage gates. Code conventions are in [`STYLE_GUIDE.md`](./STYLE_GUIDE.md).
+How tests are written and run in the rosetta frontend. The goal is a small, self-documenting
+suite that exercises the real React Router data flow without a backend, mocks only the API
+boundary, and holds a **100% coverage gate** on everything that ships. Code conventions are in
+[`STYLE_GUIDE.md`](./STYLE_GUIDE.md). For test patterns covering screens not present here (list
+loaders, table/form/pagination tests, the e2e walkthrough), see the
+[`tc-fullstack-starter`](https://github.com/tutorcruncher/tc-fullstack-starter) template.
 
 ## Goals
 
@@ -20,7 +23,6 @@ holds the coverage gates. Code conventions are in [`STYLE_GUIDE.md`](./STYLE_GUI
 - **Jest 30 + ts-jest** (config in `jest.config.cjs`), **jsdom** environment.
 - **Testing Library** (`@testing-library/react`, `@testing-library/jest-dom`,
   `@testing-library/user-event`) for component/route tests.
-- **react-select-event** for driving the `Select` primitive.
 - **Playwright** for e2e (`e2e/`, config in `playwright.config.ts`).
 
 ```bash
@@ -41,7 +43,6 @@ tests/
 │   └── createStub.tsx   # createRouteStub (loader/action route tests)
 ├── mocks/
 │   ├── index.ts         # re-exports all mock data
-│   ├── items.ts         # mockItem / mockItems / buildItems factory
 │   └── users.ts         # mockUser
 ├── components/          # component unit tests (mirror app/components)
 ├── helpers/             # helper-function tests
@@ -73,30 +74,22 @@ Use `query*` for absence assertions, `find*` for async appearance.
 ## Typed data factories
 
 Build test data from the typed mocks in `tests/mocks/`, never inline ad-hoc objects scattered
-across files. A factory takes overrides and returns fully-typed objects:
+across files. A mock is a fully-typed object; a factory takes overrides and returns one:
 
 ```ts
-import type { Item } from '~/types';
+import type { User } from '~/types';
 
-export const mockItem: Item = {
+export const mockUser: User = {
   id: 1,
-  name: 'First item',
-  description: 'A first item',
-  status: 'active',
-  category: 'general',
+  name: 'Ada Lovelace',
+  email: 'ada@example.com',
 };
-
-export function buildItems(count: number, overrides: Partial<Item> = {}): Item[] {
-  return Array.from({ length: count }, (_, i) => ({
-    ...mockItem,
-    id: i + 1,
-    name: `Item ${i + 1}`,
-    ...overrides,
-  }));
-}
 ```
 
-Re-export everything from `tests/mocks/index.ts` so tests import from one place.
+Re-export everything from `tests/mocks/index.ts` so tests import from one place. When you add a
+resource, add a `build<Resource>s(count, overrides)` factory alongside its mock (see the
+[`tc-fullstack-starter`](https://github.com/tutorcruncher/tc-fullstack-starter) template for the
+pattern).
 
 ## Render helpers
 
@@ -111,7 +104,7 @@ ad-hoc router wrapper in individual tests.
 ```tsx
 import { renderWithProviders } from '~/../tests/utils/render';
 
-renderWithProviders(<ItemForm onSubmit={onSubmit} />);
+renderWithProviders(<SomeComponent />);
 ```
 
 ## Loader/action route tests — `createRouteStub`
@@ -119,31 +112,38 @@ renderWithProviders(<ItemForm onSubmit={onSubmit} />);
 To test a route's **loader/action data flow** in isolation, mock the api layer and drive the route
 through `createRouteStub` (a thin wrapper over React Router's `createRoutesStub`). This runs the
 real loader/action against the mocked api and renders the route exactly as RR7 would — no backend.
+The `/login` route is the worked example in this codebase (`tests/routes/login.test.tsx`):
 
 ```tsx
-import { itemsApi } from '~/data/api';
+import Login, { clientAction } from '~/routes/auth/login';
+import { authApi } from '~/data/api';
 import { createRouteStub } from '~/../tests/utils/createStub';
-import { buildItems } from '~/../tests/mocks';
 
-jest.mock('~/data/api');
-const mockItemsApi = jest.mocked(itemsApi);
+jest.mock('~/data/api', () => ({
+  ...jest.requireActual('~/data/api'),
+  authApi: { login: jest.fn() },
+}));
+const mockLogin = jest.mocked(authApi.login);
 
-it('renders the items returned by the loader', async () => {
-  mockItemsApi.list.mockResolvedValue({ items: buildItems(3), total: 3, page: 1, page_size: 20 });
+it('logs in and redirects on success', async () => {
+  mockLogin.mockResolvedValue({ access_token: 'tok', token_type: 'bearer' });
 
-  const Stub = createRouteStub([{ path: '/items', Component: ItemsRoute, loader: itemsLoader }]);
-  render(<Stub initialEntries={['/items']} />);
-
-  expect(await screen.findByText('Item 1')).toBeInTheDocument();
+  createRouteStub(
+    [
+      { path: '/login', Component: Login, action: clientAction },
+      { path: '/', Component: () => <p>Home page</p> },
+    ],
+    { initialPath: '/login' },
+  );
+  // …fill the form and submit, then assert the redirect
 });
 ```
 
 Common api-mock shapes:
 
 ```ts
-mockItemsApi.list.mockResolvedValue({ items, total, page: 1, page_size: 20 }); // success
-mockItemsApi.list.mockRejectedValue(new ApiError(500, 'Server error'));        // error → ErrorBoundary
-mockItemsApi.create.mockResolvedValue(mockItem);                               // action success → redirect
+mockApi.method.mockResolvedValue(result);                  // success → render / redirect
+mockApi.method.mockRejectedValue(new ApiError(500, 'Server error')); // error → ErrorBoundary or Alert
 ```
 
 ## What to cover
@@ -169,8 +169,10 @@ and behaviors with different setup, separate.
   more roles by extending the fixture, not by re-logging-in per test.
 - **Server**: started by Playwright in CI (`webServer.command: 'npm run dev'`), reused locally
   (`reuseExistingServer: !process.env.CI`). `baseURL` comes from `E2E_BASE_URL`.
-- The example spec (`e2e/items.spec.ts`) walks the full slice: list → New → fill form → submit →
-  assert detail → edit → assert update.
+- The `e2e/` setup (`auth.setup.ts` + `fixtures/auth.ts`) provides the authenticated fixture; add
+  feature specs against it. The full worked e2e walkthrough (list → new → form → detail → edit)
+  lives in the [`tc-fullstack-starter`](https://github.com/tutorcruncher/tc-fullstack-starter)
+  template.
 
 ## Coverage gates
 
@@ -178,12 +180,14 @@ Committed thresholds (enforced in CI by `npm test`):
 
 | Metric | Threshold |
 | --- | --- |
-| Statements | 80% |
-| Branches | 75% |
-| Functions | 70% |
-| Lines | 75% |
+| Statements | 100% |
+| Branches | 100% |
+| Functions | 100% |
+| Lines | 100% |
 
 The framework shell is **excluded** from coverage because it is untestable glue, not logic:
 `app/root.tsx`, `app/entry.client.tsx`, `app/routes.ts`, and any `**/+types/**`. If you add a new
 piece of pure framework wiring, add it to `coveragePathIgnorePatterns` in `jest.config.cjs` and
-note why; everything else must be covered.
+note why. Everything else must be covered — prefer a real test for every branch (including error
+paths); only when a line is genuinely unreachable in jsdom, exclude it narrowly with
+`/* istanbul ignore next */` plus a one-line justification.

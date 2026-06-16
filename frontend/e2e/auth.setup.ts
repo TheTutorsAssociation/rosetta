@@ -23,7 +23,7 @@ const AUTH_FILE = 'e2e/.auth/user.json';
 setup('authenticate', async ({ page, context }) => {
   const email = process.env.E2E_EMAIL;
   const password = process.env.E2E_PASSWORD;
-  const apiUrl = process.env.E2E_API_URL || 'http://localhost:3000';
+  const apiUrl = process.env.E2E_API_URL || 'http://localhost:8000';
 
   if (!email || !password) {
     await context.storageState({ path: AUTH_FILE });
@@ -36,9 +36,10 @@ setup('authenticate', async ({ page, context }) => {
   });
   expect(response.ok(), `Login failed for ${email}: ${response.status()}`).toBeTruthy();
 
-  const { token } = await response.json();
+  const { access_token } = await response.json();
 
-  await page.goto(`/?token=${token}`);
+  await page.goto('/login');
+  await page.evaluate((token) => localStorage.setItem('token', token), access_token);
   await page.waitForLoadState('networkidle');
 
   await context.storageState({ path: AUTH_FILE });

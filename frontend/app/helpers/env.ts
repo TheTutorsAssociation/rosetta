@@ -4,7 +4,7 @@
  * surface and optional integrations self-disable when their var is unset.
  */
 
-export const apiBaseUrl: string = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+export const apiBaseUrl: string = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
 /** Optional error monitoring. `undefined` when unset, which disables Sentry. */
 export const sentryDsn: string | undefined = import.meta.env.VITE_SENTRY_DSN;

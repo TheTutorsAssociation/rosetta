@@ -1,4 +1,4 @@
-import { render, screen, waitFor, renderHook } from '@testing-library/react';
+import { render, screen, waitFor, renderHook, act } from '@testing-library/react';
 import { createRoutesStub, useLocation } from 'react-router';
 import { AuthProvider, useAuth } from '~/providers/AuthProvider';
 import { authApi } from '~/data/api';
@@ -102,6 +102,62 @@ describe('AuthProvider', () => {
 
     await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('false'));
     expect(screen.getByTestId('location')).toHaveTextContent('/login');
+  });
+
+  it('ignores a resolved checkUser after the effect was cancelled by unmount', async () => {
+    mockGetItem.mockReturnValue('a-token');
+    let resolveCheck: (user: typeof mockUser) => void = () => undefined;
+    mockCheckUser.mockReturnValue(
+      new Promise((resolve) => {
+        resolveCheck = resolve;
+      }),
+    );
+    const Stub = createRoutesStub([
+      {
+        path: '*',
+        Component: () => (
+          <AuthProvider>
+            <AuthProbe />
+          </AuthProvider>
+        ),
+      },
+    ]);
+    const { unmount } = render(<Stub initialEntries={['/items']} />);
+
+    unmount();
+    await act(async () => {
+      resolveCheck(mockUser);
+    });
+
+    expect(mockCheckUser).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores a rejected checkUser after the effect was cancelled by unmount', async () => {
+    mockGetItem.mockReturnValue('a-token');
+    let rejectCheck: (error: Error) => void = () => undefined;
+    mockCheckUser.mockReturnValue(
+      new Promise((_resolve, reject) => {
+        rejectCheck = reject;
+      }),
+    );
+    const Stub = createRoutesStub([
+      {
+        path: '*',
+        Component: () => (
+          <AuthProvider>
+            <AuthProbe />
+          </AuthProvider>
+        ),
+      },
+    ]);
+    const { unmount } = render(<Stub initialEntries={['/items']} />);
+
+    unmount();
+    await act(async () => {
+      rejectCheck(new Error('invalid'));
+    });
+
+    expect(mockCheckUser).toHaveBeenCalledTimes(1);
   });
 
   it('throws when useAuth is used outside an AuthProvider', () => {

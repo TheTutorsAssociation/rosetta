@@ -9,6 +9,7 @@ function ToastHarness() {
       <button onClick={() => showError('Failed')}>show-error</button>
       <button onClick={() => showInfo('Heads up')}>show-info</button>
       <button onClick={() => showToast('Sticky', 'info', 0)}>show-sticky</button>
+      <button onClick={() => showToast('Plain')}>show-plain</button>
     </div>
   );
 }
@@ -49,6 +50,16 @@ describe('ToastProvider', () => {
     renderToasts();
     fireEvent.click(screen.getByRole('button', { name: 'show-error' }));
     expect(screen.getByText('Failed')).toBeInTheDocument();
+  });
+
+  it('defaults to an info toast that auto-dismisses after the default duration', () => {
+    renderToasts();
+    fireEvent.click(screen.getByRole('button', { name: 'show-plain' }));
+    expect(screen.getByText('Plain')).toBeInTheDocument();
+    act(() => {
+      jest.advanceTimersByTime(3000);
+    });
+    expect(screen.queryByText('Plain')).not.toBeInTheDocument();
   });
 
   it('does not auto-dismiss a toast with duration 0', () => {

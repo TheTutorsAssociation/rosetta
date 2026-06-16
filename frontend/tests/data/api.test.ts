@@ -82,6 +82,28 @@ describe('apiRequest', () => {
     );
     await expect(apiRequest('/ping')).rejects.toThrow('Service Unavailable');
   });
+
+  it('flattens a FastAPI 422 detail array into one message', async () => {
+    mockFetch.mockResolvedValue(
+      jsonResponse(
+        {
+          detail: [
+            { loc: ['body', 'password'], msg: 'password too long', type: 'string_too_long' },
+            { loc: ['body', 'email'], msg: 'not a valid email', type: 'value_error' },
+          ],
+        },
+        { status: 422 },
+      ),
+    );
+    await expect(apiRequest('/auth/login')).rejects.toThrow(
+      'password too long; not a valid email',
+    );
+  });
+
+  it('falls back to a generic message when there is no detail, error, or status text', async () => {
+    mockFetch.mockResolvedValue(new Response('not json', { status: 500, statusText: '' }));
+    await expect(apiRequest('/ping')).rejects.toThrow('Request failed');
+  });
 });
 
 describe('authApi.login', () => {

@@ -58,8 +58,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
         setUser(currentUser);
-      } catch (error) {
-        console.error(error);
+      } catch {
+        // An invalid/expired/absent token is an expected state, not an error to log;
+        // we just clear the user and bounce to /login.
         if (cancelled) {
           return;
         }

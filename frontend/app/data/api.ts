@@ -24,9 +24,26 @@ export type PaginatedResponse<T> = {
 };
 
 /**
+ * Build a human-readable message from an error response body. FastAPI sends a
+ * string `detail` for most errors but an array of `{ loc, msg, type }` objects
+ * for 422 validation failures; both are flattened to a string here. Falls back
+ * to the HTTP status text, then a generic message.
+ */
+function errorMessage(body: unknown, statusText: string): string {
+  const b = (body ?? {}) as { detail?: unknown; error?: unknown };
+  if (typeof b.detail === 'string') return b.detail;
+  if (Array.isArray(b.detail)) {
+    return b.detail.map((entry: { msg: string }) => entry.msg).join('; ');
+  }
+  if (typeof b.error === 'string') return b.error;
+  return statusText || 'Request failed';
+}
+
+/**
  * The single typed HTTP client. Injects the base URL and JSON headers, attaches
  * a bearer token from storage when present, parses the JSON body, and throws
- * {@link ApiError} on a non-ok response (message from `detail` or `error`).
+ * {@link ApiError} on a non-ok response (message from `detail`, `error`, or the
+ * status text).
  *
  * Components never call `fetch()` directly — loaders and actions call this (or a
  * resource object built on it, like {@link authApi}).
@@ -43,10 +60,7 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
   const body = await response.json().catch(() => null);
 
   if (!response.ok) {
-    // `response.statusText` is always a (possibly empty) string, so the final fallback is unreachable.
-    const message =
-      body?.detail ?? body?.error ?? response.statusText ?? /* istanbul ignore next */ 'Request failed';
-    throw new ApiError(response.status, message);
+    throw new ApiError(response.status, errorMessage(body, response.statusText));
   }
 
   return body as T;

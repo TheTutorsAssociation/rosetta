@@ -1,8 +1,10 @@
 from datetime import datetime, timezone
 from enum import Enum
 
-from sqlalchemy import Column, DateTime, Enum as SQLEnum, TypeDecorator
+from sqlalchemy import Column, DateTime, Enum as SQLEnum, ForeignKey, Integer, TypeDecorator
 from sqlmodel import Field
+
+_UNSET = object()
 
 
 class UTCDateTime(TypeDecorator):
@@ -54,10 +56,44 @@ def UTCDatetimeField(now_add: bool = False, auto_now: bool = False, **kwargs):
     )
 
 
-def EnumField(enum_class: type[Enum], **kwargs):
-    """Create a Field with proper SQLAlchemy enum configuration that stores enum values."""
+def EnumField(enum_class: type[Enum], *, default=_UNSET, **kwargs):
+    """Create a Field with proper SQLAlchemy enum configuration that stores enum values.
+
+    Pass ``default=`` to give the field a pydantic default (e.g. a default status, or ``None``
+    for a nullable enum); omit it to make the field required, as before.
+    """
     desc = kwargs.pop('description', None)
+    field_kwargs = {'description': desc}
+    if default is not _UNSET:
+        field_kwargs['default'] = default
     return Field(
         sa_column=Column(SQLEnum(enum_class, values_callable=lambda x: [e.value for e in x]), **kwargs),
-        description=desc,
+        **field_kwargs,
+    )
+
+
+def FKField(
+    foreign_key: str,
+    ondelete: str,
+    description: str | None = None,
+    nullable: bool = False,
+    unique: bool = False,
+    primary_key: bool = False,
+    **kwargs,
+):
+    """Create an auto-indexed integer foreign-key Field.
+
+    ``ondelete`` is required (no default) to force every FK to declare its delete behaviour.
+    """
+    return Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey(foreign_key, ondelete=ondelete),
+            index=True,
+            nullable=nullable,
+            unique=unique,
+            primary_key=primary_key,
+            **kwargs,
+        ),
+        description=description,
     )

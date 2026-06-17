@@ -7,8 +7,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.testclient import TestClient
 
 from app.auth.jwt import CustomHTTPBearer
-from app.auth.login import create_access_token, get_password_hash
-from app.auth.models import UserType
+from app.auth.login import (
+    UNUSABLE_PASSWORD_PREFIX,
+    authenticate_user,
+    create_access_token,
+    get_password_hash,
+    is_password_usable,
+    make_unusable_password,
+)
+from app.auth.models import User, UserType
 from app.auth.permissions import Permission, PermissionCheck, user_type_check
 from app.core.config import settings
 from app.core.database import DBSession
@@ -316,3 +323,29 @@ class TestTokenIdentity:
         r = member_client.get(member_client.app.url_path_for('test-member-only'))
         assert r.status_code == 401
         assert r.json() == {'detail': 'Could not validate credentials'}
+
+
+class TestUnusablePassword:
+    def test_make_unusable_password_is_not_usable(self):
+        """A made unusable password carries the sentinel prefix and reports as unusable."""
+        hashed = make_unusable_password()
+        assert hashed.startswith(UNUSABLE_PASSWORD_PREFIX)
+        assert is_password_usable(hashed) is False
+
+    def test_real_hash_is_usable(self):
+        """A genuine argon2 hash reports as usable."""
+        assert is_password_usable(get_password_hash('a-real-password')) is True
+
+    @patch('app.auth.login.verify_password', return_value=False)
+    def test_unusable_account_cannot_authenticate_and_is_timing_safe(self, mock_verify, db: DBSession):
+        """A user with an unusable password fails auth, but still runs one verify (timing-safe)."""
+        db.create(
+            User(
+                last_name='Member',
+                email='unusable@test.com',
+                user_type=UserType.MEMBER,
+                hashed_password=make_unusable_password(),
+            )
+        )
+        assert authenticate_user(db, 'unusable@test.com', 'whatever-password') is None
+        assert mock_verify.call_count == 1

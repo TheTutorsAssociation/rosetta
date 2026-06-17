@@ -21,8 +21,11 @@ generalize the template's pattern for that layer rather than inventing a new one
   combinable with `|`/`&`; `user_type_check(UserType)` builds one for a given type) in
   `app/auth/permissions.py`. Apply them as route/router `dependencies=[...]`, never as handler-body checks.
 - **Model layer** — `User` / `UserBasic` (`app/auth/models.py`) on the thin `AppModel`
-  (`app/common/models.py`) SQLModel base. Field factories `UTCDatetimeField` / `EnumField` live
-  in `app/common/fields.py`.
+  (`app/common/models.py`) SQLModel base. Field factories `UTCDatetimeField` / `EnumField` / `FKField`
+  live in `app/common/fields.py`.
+- **Members** (`app/members/`) — a member is a `User(MEMBER)` + a **1:1 `Member` profile**; staff CRUD at
+  `/members` (admin-only), with the list infra (`PaginatedResponse`, `ListFilter`/`ListOrder` in
+  `app/common/api/`). Staff-created members get an unusable password (`app/auth/login.py`) until activated.
 - **Errors** — the `HTTP400…HTTP500` classes in `app/common/api/errors.py`. Raise these, never
   `HTTPException` directly.
 - **Rate limiting** — `rate_limit_by_ip` (`app/common/api/rate_limit.py`) on the login route.

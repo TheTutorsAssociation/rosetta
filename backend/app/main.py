@@ -15,6 +15,8 @@ from app.core.config import settings
 from app.core.database import create_db_and_tables
 from app.core.logging import configure_logfire, configure_logging
 from app.core.sentry import init_sentry
+from app.members.api.members import router as members_router
+from app.members.api.signup import anon_router as members_signup_router
 
 configure_logging()
 logger = logging.getLogger(__name__)
@@ -67,12 +69,17 @@ async def health() -> dict:
 # 'auth' routers (anonymous)
 # -------------------------------------------------------------------
 app.include_router(auth_anon_router, dependencies=[Depends(Permission.anonymous)])
+# Public self-service member signup (creates a User(MEMBER) with a real password + profile).
+app.include_router(members_signup_router, dependencies=[Depends(Permission.anonymous)])
 
 
 # -------------------------------------------------------------------
 # Authenticated routers
 # -------------------------------------------------------------------
 app.include_router(users_router, dependencies=[Depends(auth_user)])
+
+# Member admin is staff-only — every route requires an admin (Permission.is_admin authenticates too).
+app.include_router(members_router, dependencies=[Depends(Permission.is_admin)])
 
 
 if __name__ == '__main__':

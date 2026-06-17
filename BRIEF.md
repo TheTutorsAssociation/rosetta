@@ -71,7 +71,8 @@ title / logfire service → `rosetta`; wire `AuthProvider` + `/auth/login` + `/u
 1. **`User`** — the single login model; a `user_type` enum (`UserType`) of `ADMIN` / `MEMBER` / `CONTACT`
    (Contact = a non-member who can still log in) plus an orthogonal `is_superadmin` flag. `email` is
    unique across all user types. TTA staff are `ADMIN`; member-login users (`MEMBER`) come with the hub.
-2. **`Member`** — named person holding/covered by a membership. Personal (name, email unique, phone,
+2. **`Member`** — a `User` of type `MEMBER` (identity + login: name, unique email, an *unusable* password
+   until the member activates it) **plus a 1:1 `Member` profile** keyed to that user. Profile: phone,
    WhatsApp, address incl. **business address**, about, **tuition type**, **subject specialisms**,
    **tuition/qualification levels**, qualifications, **delivery mode** online/in-person/both, photo,
    `show_profile_publicly`); consents (Code of Practice, Contractual Rules, DBS Policy, Privacy Policy,
@@ -105,9 +106,9 @@ title / logfire service → `rosetta`; wire `AuthProvider` + `/auth/login` + `/u
    (email-verify), **`share_publicly`**. Replaces the Google Form.
 9. **`AuditEntry`** — append-only log of membership/compliance status & level changes (who/what/when),
    surfaced as the member notes timeline. [COM-05]
-10. **Member auth** — members log in as a `User` with `user_type` `MEMBER` linked 1:1 to their `Member`
-    (staff are `ADMIN`, with `is_superadmin` for elevated access). Drives the member hub; `Permission`
-    gates member vs staff routes.
+10. **Member auth** — a member *is* the `User` (type `MEMBER`); the `Member` profile is keyed 1:1 to it.
+    Staff-created members get an **unusable** password — the record exists but can't log in until activated
+    via the hub's set-password flow. Staff are `ADMIN` (+ `is_superadmin`). `Permission` gates routes.
 11. **`Resource`** — structured member-hub content (documents, links, logos, notices), optionally
     tier-gated; managed in the admin (not freeform pages). Powers the hub's resource library + logos.
 

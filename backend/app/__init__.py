@@ -9,3 +9,4 @@ them all here once.
 """
 
 from app.auth.models import User  # noqa: F401
+from app.members.models.member import Member  # noqa: F401

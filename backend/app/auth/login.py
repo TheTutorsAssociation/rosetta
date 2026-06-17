@@ -1,3 +1,4 @@
+import secrets
 from datetime import UTC, datetime, timedelta
 
 import jwt
@@ -24,6 +25,22 @@ MAX_PASSWORD_LENGTH = 256
 # both branches. Closes the timing side-channel that would otherwise let attackers enumerate
 # valid emails — pwdlib defaults to argon2id, which is intentionally slow (~150-300ms).
 _DUMMY_HASH = pwd_context.hash('timing-resistance-dummy-password')
+
+# Prefix marking an "unusable" password (Django-style). A record created without a usable
+# login — e.g. a member created by staff before the member hub exists — gets such a value:
+# the row exists and is referenced, but no password can ever match it, so it can't authenticate
+# until it's activated by setting a real password.
+UNUSABLE_PASSWORD_PREFIX = '!'
+
+
+def make_unusable_password() -> str:
+    """Return a sentinel password hash that no login can match (an unusable password)."""
+    return UNUSABLE_PASSWORD_PREFIX + secrets.token_urlsafe(32)
+
+
+def is_password_usable(hashed_password: str) -> bool:
+    """Whether ``hashed_password`` is a real (usable) hash rather than the unusable sentinel."""
+    return not hashed_password.startswith(UNUSABLE_PASSWORD_PREFIX)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -74,6 +91,12 @@ def authenticate_user(session: DBSession, email: str, password: str) -> User | N
     """
     user = session.exec(select(User).where(User.email == email)).first()
     if user is None:
+        _dummy_verify_for_timing(password)
+        return None
+    if not is_password_usable(user.hashed_password):
+        # Account exists but has no usable login yet (e.g. staff-created member). Spend the
+        # same argon2 time as a real verify so "no account" / "unusable" / "wrong password"
+        # are indistinguishable by timing.
         _dummy_verify_for_timing(password)
         return None
     if not verify_password(password, user.hashed_password):

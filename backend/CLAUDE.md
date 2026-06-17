@@ -81,7 +81,7 @@ Category-grouped rules with examples live in `.claude/rules/`:
 |----------|-------|
 | **API** | `api/error-handling.md`, `api/responses.md`, `api/rate-limiting.md` |
 | **Code Style** | `code-style/documentation.md`, `code-style/imports.md` |
-| **Database** | `database/session.md`, `database/security.md` |
+| **Database** | `database/session.md`, `database/security.md`, `database/indexing.md` |
 | **Tasks** | `tasks/celery.md` |
 | **Testing** | `testing/url-generation.md`, `testing/data-creation.md`, `testing/assertions.md`, `testing/client-usage.md`, `testing/style.md` |
 | **Tooling** | `tooling/typing.md` |

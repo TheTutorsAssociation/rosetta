@@ -37,6 +37,11 @@ class ComplianceRAG(str, Enum):
     GREEN = 'green'
 
 
+def generate_member_number(member_id: int) -> str:
+    """Provisional member-number format (e.g. TTA-000123) — confirm the scheme with TTA."""
+    return f'TTA-{member_id:06d}'
+
+
 class _Member(AppModel):
     """Shared, user-settable profile fields for a member.
 

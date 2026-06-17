@@ -16,7 +16,14 @@ from app.common.api.paginate import PaginatedResponse
 from app.common.utils import escape_like
 from app.core.config import settings
 from app.core.database import DBSession, get_db
-from app.members.models.member import Member, MemberBasic, MemberCreate, MemberUpdate, VerificationStatus
+from app.members.models.member import (
+    Member,
+    MemberBasic,
+    MemberCreate,
+    MemberUpdate,
+    VerificationStatus,
+    generate_member_number,
+)
 
 router = APIRouter(prefix='/members', tags=['members'])
 
@@ -119,7 +126,7 @@ def create_member(request: Request, body: MemberCreate, db: DBSession = Depends(
     member = Member(user_id=user.id, **profile)  # ty:ignore[invalid-argument-type]
     db.add(member)
     db.flush()
-    member.member_number = f'TTA-{member.id:06d}'
+    member.member_number = generate_member_number(member.id)  # ty:ignore[invalid-argument-type]
     db.commit()
     db.refresh(member)
     return MemberBasic.model_validate(member, from_attributes=True)

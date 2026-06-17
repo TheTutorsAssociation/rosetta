@@ -1,6 +1,6 @@
 import factory
 
-from app.members.models.member import Member, VerificationStatus
+from app.members.models.member import Member, VerificationStatus, generate_member_number
 from tests.auth.factories import UserFactory
 from tests.base_factory import SQLModelFactory
 
@@ -29,7 +29,7 @@ class MemberProfileFactory(SQLModelFactory):
             }
             user = UserFactory.create_with_db(db, **user_kwargs)
         member = super().create_with_db(db, user_id=user.id, **kwargs)
-        member.member_number = f'TTA-{member.id:06d}'
+        member.member_number = generate_member_number(member.id)
         db.add(member)
         db.commit()
         db.refresh(member)

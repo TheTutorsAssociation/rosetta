@@ -16,10 +16,7 @@ def _create_payload(**overrides) -> dict:
 class TestCreateMember:
     def test_create_returns_the_full_member_shape(self, auth_client: AuthenticatedTestClient, db: DBSession):
         """Creating a member returns the profile + the joined user identity + a generated number."""
-        r = auth_client.post(
-            auth_client.app.url_path_for('members-create'),
-            json=_create_payload(phone='07123', show_profile_publicly=True),
-        )
+        r = auth_client.post(auth_client.app.url_path_for('members-create'), json=_create_payload(phone='07123'))
         assert r.status_code == 201
         data = r.json()
         assert data == {
@@ -32,43 +29,21 @@ class TestCreateMember:
             'city': None,
             'postcode': None,
             'country': None,
-            'business_address_line_1': None,
-            'business_address_line_2': None,
-            'business_city': None,
-            'business_postcode': None,
-            'business_country': None,
             'about': None,
-            'photo': None,
-            'show_profile_publicly': True,
             'tuition_type': None,
             'subject_specialisms': [],
             'tuition_levels': [],
             'qualification_levels': [],
             'qualifications': None,
             'delivery_mode': None,
-            'code_of_practice_agreed': False,
             'code_of_practice_agreed_dt': None,
-            'code_of_practice_version': None,
-            'contractual_rules_agreed': False,
             'contractual_rules_agreed_dt': None,
-            'contractual_rules_version': None,
-            'dbs_policy_agreed': False,
             'dbs_policy_agreed_dt': None,
-            'dbs_policy_version': None,
-            'privacy_policy_agreed': False,
             'privacy_policy_agreed_dt': None,
-            'privacy_policy_version': None,
-            'level_eligibility_accepted': False,
             'level_eligibility_accepted_dt': None,
-            'level_eligibility_version': None,
-            'cpd_platform_username': None,
             'referral_source': None,
             'admin_notes': None,
             'verification_status': 'processing',
-            'safeguarding_completion_date': None,
-            'email_workflow_updates': True,
-            'email_event_announcements': True,
-            'email_blasts': True,
             'created_dt': data['created_dt'],
             'updated_dt': data['updated_dt'],
             'compliance_rag': 'green',

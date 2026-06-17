@@ -54,15 +54,7 @@ class _Member(AppModel):
     city: Optional[str] = None
     postcode: Optional[str] = None
     country: Optional[str] = None
-    # Business address (the member's tutoring business — separate from home)
-    business_address_line_1: Optional[str] = None
-    business_address_line_2: Optional[str] = None
-    business_city: Optional[str] = None
-    business_postcode: Optional[str] = None
-    business_country: Optional[str] = None
     about: Optional[str] = None
-    photo: Optional[str] = Field(default=None, description='URL or path to the profile photo')
-    show_profile_publicly: bool = Field(default=False, description='Opt-in to the future public directory')
 
     # Tuition / specialisation. Flexible types until TTA confirms the taxonomies (issue #5 note).
     tuition_type: Optional[str] = None
@@ -72,36 +64,19 @@ class _Member(AppModel):
     qualifications: Optional[str] = None
     delivery_mode: Optional[DeliveryMode] = EnumField(DeliveryMode, default=None)
 
-    # Consents — each: agreed flag + timestamp + the policy version agreed to.
-    code_of_practice_agreed: bool = False
+    # Consents — a nullable timestamp per policy: set = agreed (and when), null = not yet.
     code_of_practice_agreed_dt: Optional[datetime] = UTCDatetimeField(default=None)
-    code_of_practice_version: Optional[str] = None
-    contractual_rules_agreed: bool = False
     contractual_rules_agreed_dt: Optional[datetime] = UTCDatetimeField(default=None)
-    contractual_rules_version: Optional[str] = None
-    dbs_policy_agreed: bool = False
     dbs_policy_agreed_dt: Optional[datetime] = UTCDatetimeField(default=None)
-    dbs_policy_version: Optional[str] = None
-    privacy_policy_agreed: bool = False
     privacy_policy_agreed_dt: Optional[datetime] = UTCDatetimeField(default=None)
-    privacy_policy_version: Optional[str] = None
-    level_eligibility_accepted: bool = False
     level_eligibility_accepted_dt: Optional[datetime] = UTCDatetimeField(default=None)
-    level_eligibility_version: Optional[str] = None
 
     # Additional
-    cpd_platform_username: Optional[str] = None
     referral_source: Optional[str] = None
     admin_notes: Optional[str] = Field(default=None, description='Staff-only notes / bespoke arrangements')
 
-    # Status & compliance
+    # Status
     verification_status: VerificationStatus = EnumField(VerificationStatus, default=VerificationStatus.PROCESSING)
-    safeguarding_completion_date: Optional[datetime] = UTCDatetimeField(default=None)
-
-    # Email preferences (drive Mailchimp groups; wired in the Mailchimp integration issue)
-    email_workflow_updates: bool = True
-    email_event_announcements: bool = True
-    email_blasts: bool = True
 
 
 class Member(_Member, table=True):

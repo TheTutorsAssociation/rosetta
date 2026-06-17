@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Optional
 
 from pydantic import EmailStr
-from sqlalchemy import JSON
+from sqlalchemy import JSON, Index
 from sqlmodel import Field, Relationship, select
 from sqlmodel.sql._expression_select_cls import SelectOfScalar
 from starlette.requests import Request
@@ -106,6 +106,16 @@ class _Member(AppModel):
 
 class Member(_Member, table=True):
     """A member's profile, 1:1 with its ``User`` (which carries identity + auth)."""
+
+    # pg_trgm GIN index for the members-list ILIKE search on member_number.
+    __table_args__ = (
+        Index(
+            'ix_member_member_number_trgm',
+            'member_number',
+            postgresql_using='gin',
+            postgresql_ops={'member_number': 'gin_trgm_ops'},
+        ),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = FKField('user.id', ondelete='CASCADE', unique=True)

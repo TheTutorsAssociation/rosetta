@@ -72,6 +72,19 @@ export interface LoginResponse {
   token_type: string;
 }
 
+export interface SignupRequest {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string;
+  password: string;
+}
+
+export interface SignupResponse {
+  id: number;
+  member_number: string;
+}
+
 /**
  * Auth resource client. `login` exchanges credentials for a bearer token via
  * `POST /auth/login`; `checkUser` validates the stored token by fetching the
@@ -83,6 +96,12 @@ export const authApi = {
     apiRequest('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
+    }),
+
+  signup: (payload: SignupRequest): Promise<SignupResponse> =>
+    apiRequest('/members/signup', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     }),
 
   checkUser: (): Promise<User> => apiRequest('/users/me'),

@@ -5,7 +5,7 @@
  */
 
 /** Exact public pathnames (no auth required). */
-export const PUBLIC_ROUTES = ['/login'] as const;
+export const PUBLIC_ROUTES = ['/login', '/signup'] as const;
 
 /** Pathname prefixes treated as public (and anything nested beneath them). */
 export const PUBLIC_ROUTE_PREFIXES: readonly string[] = [];

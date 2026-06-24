@@ -132,6 +132,50 @@ describe('authApi.login', () => {
   });
 });
 
+describe('authApi.signup', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    global.fetch = mockFetch as typeof fetch;
+    mockGetItem.mockReturnValue(null);
+  });
+
+  it('POSTs the signup payload as JSON to /members/signup', async () => {
+    mockFetch.mockResolvedValue(jsonResponse({ id: 1, member_number: 'TTA-000001' }));
+    await authApi.signup({
+      first_name: 'Ada',
+      last_name: 'Lovelace',
+      email: 'ada@example.com',
+      phone: '07123456789',
+      password: 'hunter22',
+    });
+
+    expect(lastCall()[0]).toBe(`${apiBaseUrl}/members/signup`);
+    expect(lastCall()[1].method).toBe('POST');
+    expect(lastCall()[1].body).toBe(
+      JSON.stringify({
+        first_name: 'Ada',
+        last_name: 'Lovelace',
+        email: 'ada@example.com',
+        phone: '07123456789',
+        password: 'hunter22',
+      }),
+    );
+  });
+
+  it('returns the created member summary from the response', async () => {
+    mockFetch.mockResolvedValue(jsonResponse({ id: 1, member_number: 'TTA-000001' }));
+
+    await expect(
+      authApi.signup({
+        first_name: 'Ada',
+        last_name: 'Lovelace',
+        email: 'ada@example.com',
+        password: 'hunter22',
+      }),
+    ).resolves.toEqual({ id: 1, member_number: 'TTA-000001' });
+  });
+});
+
 describe('authApi.checkUser', () => {
   beforeEach(() => {
     jest.clearAllMocks();

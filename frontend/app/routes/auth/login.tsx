@@ -1,7 +1,8 @@
 import type { Route } from './+types/login';
 import { useState } from 'react';
-import { Form, redirect, useActionData, useNavigation, useSearchParams } from 'react-router';
-import { Alert, Button, Heading, Input } from '~/components/ui';
+import { Form, Link, redirect, useActionData, useNavigation, useSearchParams } from 'react-router';
+import { AuthFormLayout } from '~/components/auth/AuthFormLayout';
+import { Alert, Button, Input } from '~/components/ui';
 import { ApiError, authApi } from '~/data/api';
 import { buildMetaData } from '~/helpers/meta';
 import { safeSetItem } from '~/helpers/storage';
@@ -55,43 +56,42 @@ export default function Login() {
   const isSubmitting = navigation.state === 'submitting';
 
   return (
-    <main className="container-narrow flex min-h-[70vh] flex-col justify-center py-16">
-      <div className="mx-auto w-full max-w-sm">
-        <Heading level={1} className="font-serif text-primary">
-          Sign in
-        </Heading>
-        <p className="mb-6 text-body text-neutral-700">
-          Sign in to your Tutors&apos; Association account.
+    <AuthFormLayout title="Sign in" intro="Sign in to your Tutors' Association account.">
+      <Form method="post" className="space-y-5">
+        {actionData?.error && <Alert variant="danger">{actionData.error}</Alert>}
+
+        <input type="hidden" name="redirect_url" value={redirectUrl} />
+
+        <Input
+          name="email"
+          type="email"
+          label="Email"
+          required
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+        />
+
+        <Input
+          name="password"
+          type="password"
+          label="Password"
+          required
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+        />
+
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Signing in...' : 'Sign in'}
+        </Button>
+
+        <p className="text-body text-neutral-700">
+          No account?{' '}
+          <Link to="/signup" className="font-medium text-primary hover:underline">
+            Sign up
+          </Link>
+          .
         </p>
-
-        <Form method="post" className="space-y-5">
-          {actionData?.error && <Alert variant="danger">{actionData.error}</Alert>}
-
-          <input type="hidden" name="redirect_url" value={redirectUrl} />
-
-          <Input
-            name="email"
-            type="email"
-            label="Email"
-            required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
-
-          <Input
-            name="password"
-            type="password"
-            label="Password"
-            required
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Signing in…' : 'Sign in'}
-          </Button>
-        </Form>
-      </div>
-    </main>
+      </Form>
+    </AuthFormLayout>
   );
 }

@@ -9,6 +9,7 @@ describe('isPublicRoute', () => {
 
   it('returns true for an exact public route', () => {
     expect(isPublicRoute('/login')).toBe(true);
+    expect(isPublicRoute('/signup')).toBe(true);
   });
 
   it('returns false for a route not in the public list', () => {
@@ -31,8 +32,8 @@ describe('isPublicRoute', () => {
 });
 
 describe('route config constants', () => {
-  it('exposes login as the only exact public route', () => {
-    expect(PUBLIC_ROUTES).toEqual(['/login']);
+  it('exposes auth entry routes as exact public routes', () => {
+    expect(PUBLIC_ROUTES).toEqual(['/login', '/signup']);
   });
 
   it('ships with no public prefixes by default', () => {

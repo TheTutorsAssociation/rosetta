@@ -117,7 +117,12 @@ order/event ticket; VAT + `account` TTA/TFA flags; Stripe ids; export-only, no Q
 (membership purchases, first-year-only, auto-renewal logic) · `Event`/`TicketType`/`EventRegistration`
 (level-gated tickets, member/non-member pricing, VAT/account, **duplicate**, tags, waitlist, per-event
 custom fields, back-end-only access link revealed post-registration, attendance) · `Contact` (non-members;
-**open:** one `Person` table w/ discriminator vs separate) · `Poll`/election (members-only; with hub).
+**open:** one `Person` table w/ discriminator vs separate) · `Poll`/election (members-only; with hub) ·
+`ComplianceDocument` (DBS certificate / reference / qualification file on a Member, with scraped issue +
+expiry dates, verification status, verified-by/at) · `ComplianceShare` (a tutor-issued, revocable share
+code or grant letting one `Company` or an external platform read that tutor's compliance pack; logs each
+access) · `DbsUpdateCheck` (daily Update Service poll result per Member; stops when the Member is no longer
+active). Module G below.
 
 ## 5. Scope & requirement traceability
 
@@ -130,7 +135,8 @@ custom fields, back-end-only access link revealed post-registration, attendance)
 | Reporting: new members by tier, financials, churn/retention, MRR | 2.8, TEC-07 | **D — issue** |
 | Mailchimp integration (real-time push on member/tag change; segments) | ADM-01/02, 2.9 | **E — core integration** |
 | Member login area + hub (auth, dashboard, resources/logos/helpline/discounts, events feed, self-service profile) | PRT-01..09, MEM-09, 3.1/3.3–3.8 | **F — in scope** |
-| Compliance automation (tutor-check.co.uk, auto-email, grace→auto-suspend, 14-day archive) | COM-02, COM-03 (automation) | **Deferred** |
+| Compliance onboarding + credential sharing: tutor uploads DBS/references/qualifications once, TTA verifies, corporate members + platforms read the pack with the tutor's consent; replaces tutor-check | COM-01/02, MEM-03, call 25 Nov 2026 | **G — issue (post-MVP)** |
+| Compliance automation (tutor-check.co.uk, auto-email, grace→auto-suspend, 14-day archive) | COM-02, COM-03 (automation) | **Folded into G** |
 | In-app email editor (retire Mailchimp); tier-split member experiences | ADM-01/02, MEM-08 | **Deferred** |
 | Online voting/elections; company self-service of bundle members | 2.12, PRT-02 | **Deferred (fast-follow in hub)** |
 | Public marketing website + tutor/agency/partner directories, map, public discount list | WEB-01..09, 3.2 | **Deferred** |
@@ -179,6 +185,31 @@ custom fields, back-end-only access link revealed post-registration, attendance)
   discounts list (from the `Resource` model); events browse/register; DBS/CPD info pages — all pulling live
   from rosetta. **Structured-content admin, not a freeform CMS.** Online voting and company bundle
   self-service are fast-follows within the hub.
+- **G · Compliance onboarding & credential sharing (post-MVP, priced separately):** from the 25 Nov 2026
+  call with Chris Wordsworth and Carl Morris. Myra spends ~70% of their time on manual DBS checks and the
+  existing tutor-check system (old Laravel, unauthenticated name lookup, keeps checking ex-members, shows
+  check history to the member) is to be scrapped; everything it was for lands here.
+  - **Onboard once:** at signup (and in the hub) a tutor uploads DBS certificate, references and
+    qualifications as `ComplianceDocument`s. Issue/expiry dates are scraped from the PDF/image; staff
+    verify in the admin rather than re-keying. Verified + in-date → the Member is **TTA-approved** (green
+    tick) and feeds `compliance_rag`.
+  - **DBS rules:** on the Update Service → store the certificate number + share code and poll daily
+    (`DbsUpdateCheck`); alert staff on any status change; **never** poll a Member who is lapsed, archived
+    or deleted. Paper DBS → TTA requires an annual re-check, so expiry = issue date + 1 year, with
+    reminders to the member before it lapses. (Open: whether non-Update-Service members are eventually
+    excluded.) Reuse the DBS rules being built in TutorCruncher where they fit.
+  - **Credential sharing with consent:** a tutor issues a revocable `ComplianceShare` (share code, like a
+    visa / Update Service share code) to a corporate member such as Headway, or grants access via SSO from
+    TutorCruncher / another platform. The grantee sees the verified status **and** can download the
+    documents (DBS, share code, references) as the failsafe for AP / school audits — TTA stands behind the
+    check, but the company must be able to show it has seen the evidence. Every access is logged and shown
+    to the tutor as *who*, not as a public check history. Also: one-click **PDF compliance pack** export.
+  - **Public approved profile:** a TTA-hosted page per tutor (bio, TTA-approved tick, nothing from the
+    documents), gated by a code the tutor hands out; opt-in via `show_profile_publicly`. Replaces the
+    unauthenticated name search.
+  - **Provider API:** authenticated endpoints so TutorCruncher and other platforms can pull a tutor's
+    status / pack after the tutor consents, and push documents in. Depends on Module A (`Member`, `DBS`,
+    `Reference`, `Company`) and the compliance RAG; ships after the Wild Apricot-replacement MVP.
 - **Migration:** members, membership history, event history (where feasible), documents + cleansing. WA
   renews **March** — migrate ahead. [TEC-06]
 
@@ -206,10 +237,12 @@ Labels: `epic`, `backend`, `frontend`, `infra`, `deferred`, `question`. Mileston
   tabs + Companies/Products/Memberships admin.
 - **In-scope epics:** Payments/Stripe · Events (admin) · Reports · **Mailchimp integration (core — real-time
   push on member/tag change; wired into Members)** · **Member login area & hub (auth + dashboard + resources
-  + self-service profile)** · Wild Apricot data migration.
+  + self-service profile)** · **Compliance onboarding & credential sharing (G — post-MVP: onboard-once
+  uploads + date scraping, Update Service daily polling, consented share codes / SSO access for corporate
+  members + platforms, public approved profile, provider API; replaces tutor-check)** · Wild Apricot data
+  migration.
 - **Deferred epics (`deferred`):** Public marketing website + tutor/agency/partner directories + map ·
-  Online voting/elections · Company self-service of bundle members · Jobs board (multi-currency) · DBS
-  automation (tutor-check.co.uk + auto-email + grace→auto-suspend + 14-day archive) · In-app email editor
+  Online voting/elections · Company self-service of bundle members · Jobs board (multi-currency) · In-app email editor
   (retire Mailchimp) · Discount-code engine + partner discounts · Store extras (IPP / VAT & Compliance packs
   / conference paywall) · Tier-split member experiences.
 - **Open-question issues (`question`):** Contacts modelling (Person discriminator vs separate); events depth
